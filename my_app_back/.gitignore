@@ -1,3 +1,11 @@
+# Ignore testing videos
+/uploads/
+/uploads/*
+
+# Ignore all files in the .env directory
+.env/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
