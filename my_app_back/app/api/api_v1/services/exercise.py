@@ -1,12 +1,12 @@
+import typing as t
 import numpy as np
 import mediapipe as mp
-from app.enum import Exercise, ExerciseMeasure
+from app.enum import Exercise, ExerciseMeasure, ExerciseMeasureResult
 from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmarkList
 
 
-class ExerciseMeasureOutput:
-    def __init__(self, formula: str, values: list[float], ok: bool):
-        self.formula = formula
+class ExerciseMeasurement:
+    def __init__(self, values: t.Dict[str, float], ok: ExerciseMeasureResult):
         self.values = values
         self.ok = ok
 
@@ -32,11 +32,18 @@ def calculate_angle(a, b, c):
 
 
 def measure_exercise(
-    exercise: Exercise, landmarks: NormalizedLandmarkList
-) -> list[ExerciseMeasureOutput]:
-    measures = {}
+    exercise: Exercise,
+    landmarks: NormalizedLandmarkList,
+    result: t.Optional[t.Dict[str, t.Any]] = None,
+) -> t.Dict[ExerciseMeasure, ExerciseMeasurement]:
+    if not result:
+        measures = {}
+        for measure in ExerciseMeasure:
+            measures[measure] = []
 
-    if exercise == Exercise.DEADLIFT:
+    error_threshold = 0.05
+
+    if exercise == Exercise.SQUAT:
         # Get landmark coordinates using landmark indices
         left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
         left_knee = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_KNEE.value]
@@ -50,6 +57,52 @@ def measure_exercise(
         knee = [float(left_knee.x), float(left_knee.y)]
         ankle = [float(left_ankle.x), float(left_ankle.y)]
         shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
+
+        key_point_values = {
+            "hip": hip,
+            "knee": knee,
+            "ankle": ankle,
+            "shoulder": shoulder,
+        }
+
+        # [SQUAD-01] Hip-Knee-Ankle Alignment:
+        if knee[0] > ankle[0] + error_threshold:
+            measures[ExerciseMeasure.SQUAT_KNEE_ALIGNMENT].append(
+                ExerciseMeasurement(
+                    values={},
+                    ok=ExerciseMeasureResult.OPTIMAL
+                    if knee[0] > ankle[0] + error_threshold
+                    else ExerciseMeasureResult.POOR,
+                )
+            )
+
+        # [SQUAD-02] Back Posture:
+
+        # Define a line going down from the hip
+        hip_to_knee_line = [hip[0], knee[0], hip[1], knee[1]]
+        torso_angle = calculate_angle(shoulder, hip, hip_to_knee_line)
+        values = {"torso_angle": torso_angle, "hip_to_knee_line": hip_to_knee_line}
+        if torso_angle > 0 and torso_angle <= 20:
+            measures[ExerciseMeasure.SQUAT_TORSO_ANGLE].append(
+                ExerciseMeasurement(
+                    values=values,
+                    ok=ExerciseMeasureResult.OPTIMAL,
+                )
+            )
+        elif torso_angle > 20 and torso_angle <= 45:
+            measures[ExerciseMeasure.SQUAT_TORSO_ANGLE].append(
+                ExerciseMeasurement(
+                    values=values,
+                    ok=ExerciseMeasureResult.ADEQUATE,
+                )
+            )
+        else:
+            measures[ExerciseMeasure.SQUAT_TORSO_ANGLE].append(
+                ExerciseMeasurement(
+                    values=values,
+                    ok=ExerciseMeasureResult.POOR,
+                )
+            )
 
         # Depth: The hips go below the knees
         measures[ExerciseMeasure.DEADLIFT_DEPTH] = ExerciseMeasureOutput(

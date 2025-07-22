@@ -2,10 +2,22 @@ from enum import Enum
 
 
 class Exercise(Enum):
-    DEADLIFT = "deadlift"
+    SQUAT = "squat"
 
 
 class ExerciseMeasure(Enum):
-    DEADLIFT_DEPTH = "deadlift_depth"
-    DEADLIFT_KNEE_ALIGNMENT = "deadlift_knee_alignment"
-    DEADLIFT_TORSO_ANGLE = "deadlift_torso_angle"
+    SQUAT_KNEE_ALIGNMENT = "squat_knee_alignment"
+    SQUAT_DEPTH = "squat_depth"
+    SQUAT_TORSO_ANGLE = "squat_torso_angle"
+
+    def __str__(self):
+        return self.value
+
+
+class ExerciseMeasureResult(Enum):
+    OPTIMAL = "optimal"
+    ADEQUATE = "adequate"
+    POOR = "poor"
+
+    def __str__(self):
+        return self.value

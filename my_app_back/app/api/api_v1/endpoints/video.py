@@ -68,7 +68,7 @@ async def upload_video(file: UploadFile = File(...)):
                 landmarks = result.pose_landmarks
 
                 if landmarks:
-                    measures = measure_exercise(Exercise.DEADLIFT, landmarks)
+                    measures = measure_exercise(Exercise.SQUAT, landmarks)
 
                     if measures:
                         for i, (measure_name, measure_output) in enumerate(
