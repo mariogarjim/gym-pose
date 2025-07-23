@@ -14,10 +14,10 @@ class ExerciseMeasure(Enum):
         return self.value
 
 
-class ExerciseMeasureResult(Enum):
+class ExercisePerformance(Enum):
     OPTIMAL = "optimal"
-    ADEQUATE = "adequate"
-    POOR = "poor"
+    IMPROVABLE = "improvable"
+    HARMFUL = "harmful"
 
     def __str__(self):
         return self.value

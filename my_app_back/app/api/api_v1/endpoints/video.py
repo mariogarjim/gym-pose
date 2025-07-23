@@ -6,7 +6,7 @@ import cv2
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 import mediapipe as mp
-from app.api.api_v1.services.exercise import measure_exercise
+from app.api.api_v1.services.exercise import check_exercise_frame
 from app.enum import Exercise
 
 
@@ -58,6 +58,7 @@ async def upload_video(file: UploadFile = File(...)):
 
         with mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
             frame_count = 0
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
@@ -68,25 +69,9 @@ async def upload_video(file: UploadFile = File(...)):
                 landmarks = result.pose_landmarks
 
                 if landmarks:
-                    measures = measure_exercise(Exercise.SQUAT, landmarks)
-
-                    if measures:
-                        for i, (measure_name, measure_output) in enumerate(
-                            measures.items()
-                        ):
-                            text = f"{measure_name.name}: {', '.join(f'{v:.1f}' for v in measure_output.values)} ({'OK' if measure_output.ok else 'X'})"
-                            color = (0, 255, 0) if measure_output.ok else (0, 0, 255)
-
-                            cv2.putText(
-                                frame,
-                                text,
-                                (30, 40 + i * 30),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.7,
-                                color,
-                                2,
-                                cv2.LINE_AA,
-                            )
+                    measures = check_exercise_frame(
+                        Exercise.SQUAT, landmarks, frame_count
+                    )
 
                     mp_drawing.draw_landmarks(
                         frame,
