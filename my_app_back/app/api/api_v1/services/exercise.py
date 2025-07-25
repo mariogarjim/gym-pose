@@ -6,9 +6,8 @@ from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmarkList
 from app.constants import MAPPING_EXERCISE_TO_EXERCISE_MEASURE
 from app.utils import calculate_angle
 from app.api.api_v1.services.draw import (
-    draw_hip_and_knee_lines,
     draw_back_posture,
-    draw_knee_ankle_alignment,
+    draw_squad_depth,
 )
 
 
@@ -117,7 +116,7 @@ class Exercise:
                 )
 
             # [SQUAD-02] Squad depth:
-            draw_hip_and_knee_lines(frame_img, hip, knee)
+            draw_squad_depth(frame_img, hip, knee)
             if hip[1] >= knee[1] + error_threshold:
                 self.feedback[frame][ExerciseMeasureEnum.SQUAT_DEPTH] = (
                     ExerciseFeedback(

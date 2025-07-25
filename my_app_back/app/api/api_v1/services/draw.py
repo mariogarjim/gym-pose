@@ -232,3 +232,57 @@ def draw_back_posture(
     )
 
     return angle_deg
+
+
+def draw_squad_depth(
+    frame, knee, hip, knee_color=(0, 255, 0), hip_color=(0, 0, 255), thickness=2
+):
+    """
+    Dibuja una línea horizontal a la altura de la rodilla y un punto sobre la cadera.
+
+    - frame: imagen (np.ndarray)
+    - knee, hip: tuplas (x, y) en coordenadas normalizadas (0.0–1.0) o en píxeles
+    """
+
+    h, w = frame.shape[:2]
+
+    # Convertir coordenadas normalizadas a píxeles si es necesario
+    def to_px(pt):
+        return (
+            int(pt[0] * w) if 0 <= pt[0] <= 1 else int(pt[0]),
+            int(pt[1] * h) if 0 <= pt[1] <= 1 else int(pt[1]),
+        )
+
+    knee_px = to_px(knee)
+    hip_px = to_px(hip)
+
+    # 1. Línea horizontal en la rodilla
+    cv2.line(
+        frame, (0, knee_px[1]), (w - 1, knee_px[1]), knee_color, thickness, cv2.LINE_AA
+    )
+
+    # 2. Punto en la cadera
+    cv2.circle(frame, hip_px, 6, hip_color, -1, cv2.LINE_AA)
+
+    # Etiquetas opcionales
+    cv2.putText(
+        frame,
+        "Knee level",
+        (10, knee_px[1] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        knee_color,
+        1,
+        cv2.LINE_AA,
+    )
+
+    cv2.putText(
+        frame,
+        "Hip",
+        (hip_px[0] + 10, hip_px[1] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        hip_color,
+        1,
+        cv2.LINE_AA,
+    )
