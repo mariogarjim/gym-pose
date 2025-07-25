@@ -4,6 +4,11 @@ import mediapipe as mp
 from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExercisePerformanceEnum
 from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmarkList
 from app.constants import MAPPING_EXERCISE_TO_EXERCISE_MEASURE
+from app.utils import calculate_angle
+from app.api.api_v1.services.draw import (
+    draw_hip_and_knee_lines,
+    draw_back_posture,
+)
 
 
 class ExerciseFeedback:
@@ -52,27 +57,9 @@ class Exercise:
         self.total_frames = total_frames
         self.feedback = [{}] * total_frames
 
-    def _calculate_angle(self, a, b, c):
-        try:
-            a = np.array(a)
-            b = np.array(b)
-            c = np.array(c)
-
-            ba = a - b
-            bc = c - b
-
-            cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
-            # Ensure the cosine value is within valid range [-1, 1]
-            cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
-            angle = np.arccos(cosine_angle)
-            return float(np.degrees(angle))
-        except Exception as e:
-            print(f"Error calculating angle: {e}")
-            print(f"Points: a={a}, b={b}, c={c}")
-            return 0.0
-
     def evaluate_exercise_frame(
         self,
+        frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
     ) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
@@ -101,6 +88,7 @@ class Exercise:
             ear = [float(left_ear.x), float(left_ear.y)]
 
             # [SQUAD-01] Hip-Knee-Ankle Alignment:
+
             if knee[0] > ankle[0] + error_threshold:
                 self.feedback[frame][ExerciseMeasureEnum.SQUAT_KNEE_ALIGNMENT] = (
                     ExerciseFeedback(
@@ -113,7 +101,12 @@ class Exercise:
 
             # [SQUAD-02] Back Posture:
             # Define a line going down from the hip
-            torso_angle = self._calculate_angle(shoulder, hip, knee)
+            torso_angle = calculate_angle(shoulder, hip, knee)
+            draw_back_posture(
+                frame_img,
+                shoulder,
+                hip,
+            )
             values = {"torso_angle": torso_angle}
             if torso_angle > 20 and torso_angle <= 45:
                 self.feedback[frame][ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = (
@@ -135,6 +128,7 @@ class Exercise:
                 )
 
             # [SQUAD-03] Squad depth:
+            draw_hip_and_knee_lines(frame_img, hip, knee)
             if hip[1] >= knee[1] + error_threshold:
                 self.feedback[frame][ExerciseMeasureEnum.SQUAT_DEPTH] = (
                     ExerciseFeedback(
@@ -147,6 +141,7 @@ class Exercise:
 
             # [SQUAD-04] Head alignment:
             horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
+            # draw_head_alignment(frame_img, ear, shoulder)
             if horizontal_offset > 0.04:
                 self.feedback[frame][ExerciseMeasureEnum.HEAD_ALIGNMENT] = (
                     ExerciseFeedback(

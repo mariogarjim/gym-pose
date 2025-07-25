@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 import mediapipe as mp
 from app.enum import ExerciseEnum
 from app.api.api_v1.services import Exercise
+from app.api.api_v1.services.draw import draw_landmarks
 
 
 router = APIRouter()
@@ -75,17 +76,11 @@ async def upload_video(file: UploadFile = File(...)):
                 landmarks = result.pose_landmarks
 
                 if landmarks:
-                    exercise.evaluate_exercise_frame(frame_count, landmarks)
-
-                    mp_drawing.draw_landmarks(
-                        frame,
-                        landmarks,
-                        mp_pose.POSE_CONNECTIONS,
-                        mp_drawing.DrawingSpec(
-                            color=(0, 255, 0), thickness=2, circle_radius=2
-                        ),
-                        mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2),
+                    exercise.evaluate_exercise_frame(
+                        frame_img=frame, frame=frame_count, landmarks=landmarks
                     )
+
+                # draw_landmarks(frame, landmarks)
 
                 out.write(frame)
                 frame_count += 1
