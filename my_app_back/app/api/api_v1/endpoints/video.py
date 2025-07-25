@@ -1,13 +1,15 @@
 import os
 import tempfile
 from typing import BinaryIO
+import logging
+import traceback
 
 import cv2
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 import mediapipe as mp
-from app.api.api_v1.services.exercise import check_exercise_frame
-from app.enum import Exercise
+from app.enum import ExerciseEnum
+from app.api.api_v1.services import Exercise
 
 
 router = APIRouter()
@@ -48,9 +50,13 @@ async def upload_video(file: UploadFile = File(...)):
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+        # Exercise setup
+        exercise = Exercise(ExerciseEnum.SQUAT, total_frames)
 
         # MediaPipe pose setup
         mp_pose = mp.solutions.pose
@@ -58,7 +64,7 @@ async def upload_video(file: UploadFile = File(...)):
 
         with mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
             frame_count = 0
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
@@ -69,9 +75,7 @@ async def upload_video(file: UploadFile = File(...)):
                 landmarks = result.pose_landmarks
 
                 if landmarks:
-                    measures = check_exercise_frame(
-                        Exercise.SQUAT, landmarks, frame_count
-                    )
+                    exercise.evaluate_exercise_frame(frame_count, landmarks)
 
                     mp_drawing.draw_landmarks(
                         frame,
@@ -89,6 +93,8 @@ async def upload_video(file: UploadFile = File(...)):
         cap.release()
         out.release()
 
+        relevant_windows = exercise.evaluate_exercise()
+
         # Return processed video
         video_file = open(output_path, "rb")
         return StreamingResponse(
@@ -99,8 +105,12 @@ async def upload_video(file: UploadFile = File(...)):
             },
         )
     except Exception as e:
-        print(f"Error uploading video: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.error(f"Error uploading video: {str(e)}")
+        logging.error(f"Traceback:\n{traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail={"message": str(e), "traceback": traceback.format_exc()},
+        )
     finally:
         # Cleanup temporary files
         if "input_path" in locals() and os.path.exists(input_path):
