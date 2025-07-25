@@ -67,61 +67,6 @@ def draw_angle(frame: np.ndarray, A, B, C, color=(0, 255, 0), thickness=2):
     cv2.ellipse(frame, B, (radius, radius), 0, start_angle, end_angle, color, 1)
 
 
-def draw_head_alignment(
-    frame: np.ndarray, ear, shoulder, color=(0, 0, 255), thickness=2
-):
-    # Draw line from shoulder to ear
-    cv2.line(frame, shoulder, ear, color, thickness)
-
-    # Optional: draw a circle at each point
-    cv2.circle(frame, shoulder, 5, (255, 255, 255), -1)
-    cv2.circle(frame, ear, 5, (0, 255, 255), -1)
-
-    # Optional: annotate the offset
-    horizontal_offset = ear[0] - shoulder[0]
-    offset_text = f"Offset: {horizontal_offset:.2f}"
-    midpoint = ((ear[0] + shoulder[0]) // 2, (ear[1] + shoulder[1]) // 2)
-    cv2.putText(frame, offset_text, midpoint, cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
-
-
-def draw_hip_and_knee_lines(
-    frame: np.ndarray,
-    hip_point,
-    knee_point,
-    color_hip=(0, 0, 255),
-    color_knee=(0, 255, 0),
-    thickness=2,
-):
-    h, w = frame.shape[:2]
-
-    y_hip = int(hip_point[1])
-    y_knee = int(knee_point[1])
-
-    # Draw horizontal line at hip level
-    cv2.line(frame, (0, y_hip), (w, y_hip), color_hip, thickness)
-    cv2.putText(
-        frame,
-        "Hip level",
-        (10, y_hip - 10),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
-        color_hip,
-        1,
-    )
-
-    # Draw horizontal line at knee level
-    cv2.line(frame, (0, y_knee), (w, y_knee), color_knee, thickness)
-    cv2.putText(
-        frame,
-        "Knee level",
-        (10, y_knee - 10),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.5,
-        color_knee,
-        1,
-    )
-
-
 def midpoint(p1, p2):
     return ((p1[0] + p2[0]) // 2, (p1[1] + p2[1]) // 2)
 
@@ -283,6 +228,45 @@ def draw_squad_depth(
         cv2.FONT_HERSHEY_SIMPLEX,
         0.5,
         hip_color,
+        1,
+        cv2.LINE_AA,
+    )
+
+
+def draw_head_alignment(
+    frame, ear, shoulder, max_offset, color=(0, 255, 255), thickness=2
+):
+    """
+    Draws a horizontal line from shoulder to ear to visualize head alignment.
+
+    Parameters:
+    - frame: OpenCV image
+    - ear: (x, y) tuple (normalized [0–1] or pixels)
+    - shoulder: (x, y) tuple (normalized [0–1] or pixels)
+    - color: line color (default yellow)
+    - thickness: line thickness
+    """
+
+    ear_px = scale_point(ear, frame.shape)
+    shoulder_px = scale_point(shoulder, frame.shape)
+
+    # 1. Draw line from shoulder to ear
+    cv2.line(frame, shoulder_px, ear_px, color, thickness, cv2.LINE_AA)
+
+    # 2. Mark points
+    cv2.circle(frame, shoulder_px, 5, (0, 0, 255), -1)  # red
+    cv2.circle(frame, ear_px, 5, (255, 0, 0), -1)  # blue
+
+    # 3. Optional: annotate horizontal offset
+    offset_px = ear_px[0] - shoulder_px[0]
+    direction = "Forward" if offset_px > max_offset else "Correct"
+    cv2.putText(
+        frame,
+        f"{direction} ({abs(offset_px)}px)",
+        (shoulder_px[0] + 10, shoulder_px[1] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        color,
         1,
         cv2.LINE_AA,
     )

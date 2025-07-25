@@ -8,6 +8,7 @@ from app.utils import calculate_angle
 from app.api.api_v1.services.draw import (
     draw_back_posture,
     draw_squad_depth,
+    draw_head_alignment,
 )
 
 
@@ -129,8 +130,9 @@ class Exercise:
 
             # [SQUAD-03] Head alignment:
             horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
-            # draw_head_alignment(frame_img, ear, shoulder)
-            if horizontal_offset > 0.04:
+            max_offset = frame_img.shape[1] * 0.04
+            draw_head_alignment(frame_img, ear, shoulder, max_offset)
+            if horizontal_offset > max_offset:
                 self.feedback[frame][ExerciseMeasureEnum.HEAD_ALIGNMENT] = (
                     ExerciseFeedback(
                         values={},
