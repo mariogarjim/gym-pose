@@ -6,6 +6,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     PROJECT_NAME: str = "FastAPI Backend"
     API_V1_STR: str = "/api/v1"
+    DEBUG: bool = True  # Enable debug mode by default in development
 
     # Database
     DATABASE_URL: str = "sqlite:///./app.db"
