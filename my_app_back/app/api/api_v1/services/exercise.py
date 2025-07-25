@@ -8,6 +8,7 @@ from app.utils import calculate_angle
 from app.api.api_v1.services.draw import (
     draw_hip_and_knee_lines,
     draw_back_posture,
+    draw_knee_ankle_alignment,
 )
 
 
@@ -87,19 +88,7 @@ class Exercise:
             shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
             ear = [float(left_ear.x), float(left_ear.y)]
 
-            # [SQUAD-01] Hip-Knee-Ankle Alignment:
-
-            if knee[0] > ankle[0] + error_threshold:
-                self.feedback[frame][ExerciseMeasureEnum.SQUAT_KNEE_ALIGNMENT] = (
-                    ExerciseFeedback(
-                        values={"knee_x": knee[0], "ankle_x": ankle[0]},
-                        performance=ExercisePerformanceEnum.POOR,
-                        frame=frame,
-                        feedback="The knee (KNEE) should not move far forward past the ankle (ANKLE) along the horizontal (X) axis.",
-                    )
-                )
-
-            # [SQUAD-02] Back Posture:
+            # [SQUAD-01] Back Posture:
             # Define a line going down from the hip
             torso_angle = calculate_angle(shoulder, hip, knee)
             draw_back_posture(
@@ -127,7 +116,7 @@ class Exercise:
                     )
                 )
 
-            # [SQUAD-03] Squad depth:
+            # [SQUAD-02] Squad depth:
             draw_hip_and_knee_lines(frame_img, hip, knee)
             if hip[1] >= knee[1] + error_threshold:
                 self.feedback[frame][ExerciseMeasureEnum.SQUAT_DEPTH] = (
@@ -139,7 +128,7 @@ class Exercise:
                     )
                 )
 
-            # [SQUAD-04] Head alignment:
+            # [SQUAD-03] Head alignment:
             horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
             # draw_head_alignment(frame_img, ear, shoulder)
             if horizontal_offset > 0.04:
