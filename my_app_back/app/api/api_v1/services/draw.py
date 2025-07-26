@@ -78,6 +78,7 @@ def draw_back_posture(
     frame,
     shoulder,
     hip,
+    max_offset,
     arrow_length=100,
     torso_color=ColorsEnum.GREEN,
     gravity_color=ColorsEnum.BLUE,
@@ -233,9 +234,7 @@ def draw_squad_depth(
     )
 
 
-def draw_head_alignment(
-    frame, ear, shoulder, max_offset, color=(0, 255, 255), thickness=2
-):
+def draw_head_alignment(frame, ear, shoulder, color=(0, 255, 255), thickness=2):
     """
     Draws a horizontal line from shoulder to ear to visualize head alignment.
 
@@ -257,9 +256,11 @@ def draw_head_alignment(
     cv2.circle(frame, shoulder_px, 5, (0, 0, 255), -1)  # red
     cv2.circle(frame, ear_px, 5, (255, 0, 0), -1)  # blue
 
+    print("frame.shape[1]", frame.shape[1])
+
     # 3. Optional: annotate horizontal offset
     offset_px = ear_px[0] - shoulder_px[0]
-    direction = "Forward" if offset_px > max_offset else "Correct"
+    direction = "Forward" if offset_px > max_offset else "Behind"
     cv2.putText(
         frame,
         f"{direction} ({abs(offset_px)}px)",

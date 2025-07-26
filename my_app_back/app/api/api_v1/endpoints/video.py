@@ -9,7 +9,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 import mediapipe as mp
 from app.enum import ExerciseEnum
-from app.api.api_v1.services import Exercise
+from app.api.api_v1.services import ExerciseFactory
 from app.api.api_v1.services.draw import draw_landmarks
 
 
@@ -57,7 +57,8 @@ async def upload_video(file: UploadFile = File(...)):
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         # Exercise setup
-        exercise = Exercise(ExerciseEnum.SQUAT, total_frames)
+        exercise_strategy = ExerciseFactory.get_exercise_strategy(ExerciseEnum.SQUAT)
+        exercise = exercise_strategy(total_frames)
 
         # MediaPipe pose setup
         mp_pose = mp.solutions.pose
@@ -76,7 +77,7 @@ async def upload_video(file: UploadFile = File(...)):
                 landmarks = result.pose_landmarks
 
                 if landmarks:
-                    exercise.evaluate_exercise_frame(
+                    exercise.evaluate_frame(
                         frame_img=frame, frame=frame_count, landmarks=landmarks
                     )
 
@@ -88,7 +89,7 @@ async def upload_video(file: UploadFile = File(...)):
         cap.release()
         out.release()
 
-        relevant_windows = exercise.evaluate_exercise()
+        # relevant_windows = exercise.summarize_feedback()
 
         # Return processed video
         video_file = open(output_path, "rb")

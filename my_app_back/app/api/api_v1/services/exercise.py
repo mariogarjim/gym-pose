@@ -48,101 +48,85 @@ class RelevantFeedbackWindow:
         return self.__str__()
 
 
-class Exercise:
-    def __init__(
-        self,
-        exercise: ExerciseEnum,
-        total_frames: int,
-    ):
+class ExerciseFactory:
+    @staticmethod
+    def get_exercise_strategy(exercise: ExerciseEnum):
+        if exercise == ExerciseEnum.SQUAT:
+            return ExerciseSquad
+        else:
+            raise ValueError(f"Exercise {exercise} not supported")
+
+
+class BaseExercise:
+    def __init__(self, exercise: ExerciseEnum, total_frames: int):
         self.exercise = exercise
         self.total_frames = total_frames
-        self.feedback = [{}] * total_frames
 
-    def evaluate_exercise_frame(
+    def evaluate_frame(
         self,
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-    ) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
-        # Considered error due to pixel size
-        error_threshold = 0.05
+        error_threshold: float,
+    ):
+        raise NotImplementedError("Subclasses must implement this method")
 
-        if self.exercise == ExerciseEnum.SQUAT:
-            # Get landmark coordinates using landmark indices
-            left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
-            left_knee = landmarks.landmark[
-                mp.solutions.pose.PoseLandmark.LEFT_KNEE.value
-            ]
-            left_ankle = landmarks.landmark[
-                mp.solutions.pose.PoseLandmark.LEFT_ANKLE.value
-            ]
-            left_shoulder = landmarks.landmark[
-                mp.solutions.pose.PoseLandmark.LEFT_SHOULDER.value
-            ]
-            left_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_EAR.value]
+    def summarize_feedback(self):
+        raise NotImplementedError("Subclasses must implement this method")
 
-            # Convert landmarks to points for angle calculation
-            hip = [float(left_hip.x), float(left_hip.y)]
-            knee = [float(left_knee.x), float(left_knee.y)]
-            ankle = [float(left_ankle.x), float(left_ankle.y)]
-            shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
-            ear = [float(left_ear.x), float(left_ear.y)]
 
-            # [SQUAD-01] Back Posture:
-            # Define a line going down from the hip
-            torso_angle = calculate_angle(shoulder, hip, knee)
-            draw_back_posture(
-                frame_img,
-                shoulder,
-                hip,
-            )
-            values = {"torso_angle": torso_angle}
-            if torso_angle > 20 and torso_angle <= 45:
-                self.feedback[frame][ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = (
-                    ExerciseFeedback(
-                        values=values,
-                        performance=ExercisePerformanceEnum.IMPROVABLE,
-                        frame=frame,
-                        feedback="The torso leans forward moderately — aim to keep it more upright for better balance and posture.",
-                    )
-                )
-            elif torso_angle > 45:
-                self.feedback[frame][ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = (
-                    ExerciseFeedback(
-                        values=values,
-                        performance=ExercisePerformanceEnum.HARMFUL,
-                        frame=frame,
-                        feedback="The back is leaning too far forward, which increases stress on the spine and knees.",
-                    )
-                )
+class ExerciseSquad(BaseExercise):
+    def __init__(self, total_frames: int):
+        super().__init__(ExerciseEnum.SQUAT, total_frames)
 
-            # [SQUAD-02] Squad depth:
-            draw_squad_depth(frame_img, hip, knee)
-            if hip[1] >= knee[1] + error_threshold:
-                self.feedback[frame][ExerciseMeasureEnum.SQUAT_DEPTH] = (
-                    ExerciseFeedback(
-                        values={"hip_y": hip[1], "knee_y": knee[1]},
-                        performance=ExercisePerformanceEnum.OPTIMAL,
-                        frame=frame,
-                        feedback="You achieved a deep squat! Keep it up!",
-                    )
-                )
+        self.back_posture = [0] * self.total_frames
+        self.depth_squad = False
+        self.head_alignment = [0] * self.total_frames
 
-            # [SQUAD-03] Head alignment:
-            horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
-            max_offset = frame_img.shape[1] * 0.04
-            draw_head_alignment(frame_img, ear, shoulder, max_offset)
-            if horizontal_offset > max_offset:
-                self.feedback[frame][ExerciseMeasureEnum.HEAD_ALIGNMENT] = (
-                    ExerciseFeedback(
-                        values={},
-                        performance=ExercisePerformanceEnum.HARMFUL,
-                        frame=frame,
-                        feedback="The head should not tilt excessively forward to maintain the natural curvature of the spine.",
-                    )
-                )
+    def evaluate_frame(
+        self,
+        frame_img: np.ndarray,
+        frame: int,
+        landmarks: NormalizedLandmarkList,
+        error_threshold: float = 0.05,
+    ):
+        # Get landmark coordinates using landmark indices
+        left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
+        left_knee = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_KNEE.value]
+        left_shoulder = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.LEFT_SHOULDER.value
+        ]
+        left_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_EAR.value]
 
-    def evaluate_exercise(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
+        # Convert landmarks to points for angle calculation
+        hip = [float(left_hip.x), float(left_hip.y)]
+        knee = [float(left_knee.x), float(left_knee.y)]
+        shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
+        ear = [float(left_ear.x), float(left_ear.y)]
+
+        # [SQUAD-01] Back Posture:
+        # Define a line going down from the hip
+        torso_vec = np.array(hip) - np.array(shoulder)
+
+        self.back_posture[frame] = draw_back_posture(
+            frame_img, shoulder, hip, torso_vec
+        )
+        if self.back_posture[frame] > 40:
+            self.back_posture[frame] = 1
+
+        # [SQUAD-02] Squad depth:
+        # draw_squad_depth(frame_img, hip, knee)
+        if hip[1] >= knee[1] + error_threshold:
+            self.depth_squad = True
+
+        # [SQUAD-03] Head alignment:
+        horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
+        max_offset = frame_img.shape[1] * 0.04
+        # draw_head_alignment(frame_img, ear, shoulder, max_offset)
+        if horizontal_offset > max_offset:
+            self.head_alignment[frame] = 1
+
+    def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
         window_size = 30
         window_threshold_frames = 10
 

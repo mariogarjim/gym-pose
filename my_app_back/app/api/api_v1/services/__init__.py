@@ -1,3 +1,3 @@
-from .exercise import Exercise
+from .exercise import ExerciseFactory
 
-__all__ = ["Exercise"]
+__all__ = ["ExerciseFactory"]
