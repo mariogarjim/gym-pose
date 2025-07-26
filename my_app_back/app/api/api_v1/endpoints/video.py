@@ -81,15 +81,13 @@ async def upload_video(file: UploadFile = File(...)):
                         frame_img=frame, frame=frame_count, landmarks=landmarks
                     )
 
-                # draw_landmarks(frame, landmarks)
-
                 out.write(frame)
                 frame_count += 1
 
         cap.release()
         out.release()
 
-        # relevant_windows = exercise.summarize_feedback()
+        relevant_windows = exercise.summarize_feedback()
 
         # Return processed video
         video_file = open(output_path, "rb")
