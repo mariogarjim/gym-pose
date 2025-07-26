@@ -6,7 +6,7 @@ import traceback
 import json
 
 import cv2
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 import mediapipe as mp
 from app.enum import ExerciseEnum
@@ -27,7 +27,9 @@ def iterfile(file_like: BinaryIO):
 
 
 @router.post("/upload")
-async def upload_video(file: UploadFile = File(...)) -> StreamingResponse:
+async def upload_video(
+    file: UploadFile = File(...), exercise_type: ExerciseEnum = Query(...)
+) -> StreamingResponse:
     """
     Upload and process a video file.
     Returns a StreamingResponse with the processed video and feedback in headers.
@@ -63,7 +65,7 @@ async def upload_video(file: UploadFile = File(...)) -> StreamingResponse:
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         # Exercise setup
-        exercise_strategy = ExerciseFactory.get_exercise_strategy(ExerciseEnum.SQUAT)
+        exercise_strategy = ExerciseFactory.get_exercise_strategy(exercise_type)
         exercise = exercise_strategy(total_frames)
 
         # MediaPipe pose setup

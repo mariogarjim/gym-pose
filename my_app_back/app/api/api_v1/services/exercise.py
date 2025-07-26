@@ -9,6 +9,7 @@ from app.api.api_v1.services.draw import (
     draw_back_posture,
     draw_squad_depth,
     draw_head_alignment,
+    draw_landmarks,
 )
 
 
@@ -57,6 +58,8 @@ class ExerciseFactory:
     def get_exercise_strategy(exercise: ExerciseEnum):
         if exercise == ExerciseEnum.SQUAT:
             return ExerciseSquad
+        elif exercise == ExerciseEnum.BENCH_PRESS:
+            return ExerciseBenchPress
         else:
             raise ValueError(f"Exercise {exercise} not supported")
 
@@ -235,5 +238,24 @@ class ExerciseSquad(BaseExercise):
             "feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT]: ",
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT],
         )
+
+        return feedback
+
+
+class ExerciseBenchPress(BaseExercise):
+    def __init__(self, total_frames: int):
+        super().__init__(ExerciseEnum.BENCH_PRESS, total_frames)
+
+    def evaluate_frame(
+        self,
+        frame_img: np.ndarray,
+        frame: int,
+        landmarks: NormalizedLandmarkList,
+        error_threshold: float = 0.05,
+    ):
+        draw_landmarks(frame_img, landmarks)
+
+    def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
+        feedback = {}
 
         return feedback

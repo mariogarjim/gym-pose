@@ -3,6 +3,7 @@ from enum import Enum
 
 class ExerciseEnum(Enum):
     SQUAT = "squat"
+    BENCH_PRESS = "bench_press"
 
 
 class ExerciseMeasureEnum(Enum):
