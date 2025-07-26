@@ -1,7 +1,7 @@
 import typing as t
 import numpy as np
 import mediapipe as mp
-from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExercisePerformanceEnum
+from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExerciseFeedbackEnum
 from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmarkList
 from app.constants import MAPPING_EXERCISE_TO_EXERCISE_MEASURE
 from app.utils import calculate_angle
@@ -15,15 +15,11 @@ from app.api.api_v1.services.draw import (
 class ExerciseFeedback:
     def __init__(
         self,
-        values: t.Dict[str, float],
-        performance: ExercisePerformanceEnum,
-        frame: int,
-        feedback: str = "",
+        feedback: ExerciseFeedbackEnum,
+        comment: str = "",
     ):
-        self.values = values
-        self.performance = performance
-        self.frame = frame
-        self.feedback = feedback
+        self.feedback = feedback.value
+        self.comment = comment
 
 
 class RelevantFeedbackWindow:
@@ -34,12 +30,14 @@ class RelevantFeedbackWindow:
         from_frame: int,
         to_frame: int,
         number_of_relevant_frames: int,
+        exercise_feedback: ExerciseFeedback,
     ):
         self.window = window
         self.measure = measure
         self.from_frame = from_frame
         self.to_frame = to_frame
         self.number_of_relevant_frames = number_of_relevant_frames
+        self.exercise_feedback = exercise_feedback
 
     def __str__(self):
         return f"RelevantFeedbackWindow(measure={self.measure}, from_frame={self.from_frame}, to_frame={self.to_frame}, number_of_relevant_frames={self.number_of_relevant_frames})"
@@ -80,8 +78,14 @@ class ExerciseSquad(BaseExercise):
         super().__init__(ExerciseEnum.SQUAT, total_frames)
 
         self.back_posture = [0] * self.total_frames
-        self.depth_squad = False
+        self.deep_squad = False
+        self.deepest_squad = 9999
+        self.deepest_frame = 0
         self.head_alignment = [0] * self.total_frames
+
+        # Temporal windows parameters
+        self.window_size = 30
+        self.window_threshold_frames = 10
 
     def evaluate_frame(
         self,
@@ -115,9 +119,10 @@ class ExerciseSquad(BaseExercise):
             self.back_posture[frame] = 1
 
         # [SQUAD-02] Squad depth:
-        # draw_squad_depth(frame_img, hip, knee)
-        if hip[1] >= knee[1] + error_threshold:
-            self.depth_squad = True
+        depth = hip[1] - knee[1]
+        draw_squad_depth(frame_img, hip, knee, depth)
+        if depth > 0:
+            self.deep_squad = True
 
         # [SQUAD-03] Head alignment:
         horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
@@ -126,27 +131,35 @@ class ExerciseSquad(BaseExercise):
         if horizontal_offset > max_offset:
             self.head_alignment[frame] = 1
 
-    def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
-        window_size = 30
-        window_threshold_frames = 10
+        print("########################")
+        print("Frame: ", frame)
+        print("Back_posture: ", self.back_posture[frame])
+        print(
+            f"Depth: {depth}. Deep_squad:  {self.deep_squad}. Deepest_frame: {self.deepest_frame}"
+        )
+        print("Head_alignment: ", self.head_alignment[frame])
+        print("########################")
 
-        number_of_windows = self.total_frames // window_size
+    def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
+        if not self.deep_squad:
+            self.deep_squad = ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.IMPROVABLE,
+                comment="The squat is not deep enough",
+            )
+
+        number_of_windows = self.total_frames // self.window_size
 
         relevant_window_per_measure = {}
 
         for exercise_measure in MAPPING_EXERCISE_TO_EXERCISE_MEASURE[self.exercise]:
             relevant_windows = []
             for window_index in range(number_of_windows):
-                current_window_start = window_index * window_size
-                current_window_end = current_window_start + window_size
+                current_window_start = window_index * self.window_size
+                current_window_end = current_window_start + self.window_size
                 window = self.feedback[current_window_start:current_window_end]
 
-                relevant_frames = 0
-                for frame in window:
-                    if exercise_measure in frame:
-                        relevant_frames += 1
-
-                if relevant_frames >= window_threshold_frames:
+                relevant_frames = np.sum(window)
+                if relevant_frames >= self.window_threshold_frames:
                     relevant_windows.append(
                         RelevantFeedbackWindow(
                             window=window,
@@ -154,6 +167,10 @@ class ExerciseSquad(BaseExercise):
                             from_frame=current_window_start,
                             to_frame=current_window_end,
                             number_of_relevant_frames=relevant_frames,
+                            exercise_feedback=ExerciseFeedback(
+                                feedback=ExerciseFeedbackEnum.HARMFUL,
+                                comment="",
+                            ),
                         )
                     )
 

@@ -15,7 +15,7 @@ class ExerciseMeasureEnum(Enum):
         return self.value
 
 
-class ExercisePerformanceEnum(Enum):
+class ExerciseFeedbackEnum(Enum):
     OPTIMAL = "optimal"
     IMPROVABLE = "improvable"
     HARMFUL = "harmful"
