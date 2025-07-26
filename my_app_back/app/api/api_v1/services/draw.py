@@ -262,7 +262,7 @@ def draw_head_alignment(
 
     # 3. Optional: annotate horizontal offset
     offset_px = ear_px[0] - shoulder_px[0]
-    direction = "Forward" if offset_px > max_offset else "Behind"
+    direction = "Forward" if offset_px > max_offset else "OK"
     cv2.putText(
         frame,
         f"{direction} ({abs(offset_px)}px)",
