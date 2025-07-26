@@ -3,13 +3,14 @@ import tempfile
 from typing import BinaryIO
 import logging
 import traceback
+import json
 
 import cv2
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 import mediapipe as mp
 from app.enum import ExerciseEnum
-from app.api.api_v1.services import ExerciseFactory
+from app.api.api_v1.services import ExerciseFactory, Feedback
 from app.api.api_v1.services.draw import draw_landmarks
 
 
@@ -26,7 +27,12 @@ def iterfile(file_like: BinaryIO):
 
 
 @router.post("/upload")
-async def upload_video(file: UploadFile = File(...)):
+async def upload_video(file: UploadFile = File(...)) -> StreamingResponse:
+    """
+    Upload and process a video file.
+    Returns a StreamingResponse with the processed video and feedback in headers.
+    """
+    feedback_service = Feedback()
     try:
         # Validate file type
         if not file.content_type.startswith("video/"):
@@ -87,15 +93,25 @@ async def upload_video(file: UploadFile = File(...)):
         cap.release()
         out.release()
 
-        relevant_windows = exercise.summarize_feedback()
+        feedback = exercise.summarize_feedback()
+        print("feedback_test: ", feedback)
+        generated_feedback = feedback_service.generate_feedback(
+            feedback=feedback,
+        )
 
-        # Return processed video
+        print("generated_feedback: ", generated_feedback)
+
+        # Convert feedback to JSON string
+        feedback_json = json.dumps(generated_feedback)
+
+        # Return processed video with feedback in headers
         video_file = open(output_path, "rb")
         return StreamingResponse(
             iterfile(video_file),
             media_type="video/mp4",
             headers={
-                "Content-Disposition": f"attachment; filename=processed_{file.filename}"
+                "Content-Disposition": f"attachment; filename=processed_{file.filename}",
+                "X-Exercise-Feedback": feedback_json,
             },
         )
     except Exception as e:
@@ -103,7 +119,7 @@ async def upload_video(file: UploadFile = File(...)):
         logging.error(f"Traceback:\n{traceback.format_exc()}")
         raise HTTPException(
             status_code=500,
-            detail={"message": str(e), "traceback": traceback.format_exc()},
+            detail=f"Error processing video: {str(e)}",
         )
     finally:
         # Cleanup temporary files

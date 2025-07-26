@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = True  # Enable debug mode by default in development
 
+    # OpenAI
+    OPENAI_API_KEY: str
+
     # Database
     DATABASE_URL: str = "sqlite:///./app.db"
 
