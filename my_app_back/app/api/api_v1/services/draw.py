@@ -234,7 +234,9 @@ def draw_squad_depth(
     )
 
 
-def draw_head_alignment(frame, ear, shoulder, color=(0, 255, 255), thickness=2):
+def draw_head_alignment(
+    frame, ear, shoulder, max_offset, color=(0, 255, 255), thickness=2
+):
     """
     Draws a horizontal line from shoulder to ear to visualize head alignment.
 
