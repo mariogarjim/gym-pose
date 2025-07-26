@@ -131,7 +131,7 @@ class ExerciseSquad(BaseExercise):
         # [SQUAD-03] Head alignment:
         horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
         max_offset = 0.1
-        # draw_head_alignment(frame_img, ear, shoulder, max_offset)
+        draw_head_alignment(frame_img, ear, shoulder, max_offset)
         if horizontal_offset > max_offset:
             self.head_alignment[frame] = 1
 
@@ -188,7 +188,7 @@ class ExerciseSquad(BaseExercise):
             )
         else:
             feedback[ExerciseMeasureEnum.SQUAT_DEPTH] = ExerciseFeedback(
-                feedback=ExerciseFeedbackEnum.IMPROVABLE,
+                feedback=ExerciseFeedbackEnum.OPTIMAL,
                 comment="The squat is deep enough",
             )
 
