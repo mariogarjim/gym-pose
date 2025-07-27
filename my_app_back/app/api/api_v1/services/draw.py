@@ -273,3 +273,103 @@ def draw_head_alignment(
         1,
         cv2.LINE_AA,
     )
+
+
+#### PULLUP ####
+
+
+def draw_pullup_chin_over_bar(
+    frame,
+    left_index_finger,
+    right_index_finger,
+    left_mouth,
+    color=(0, 255, 255),
+    thickness=2,
+):
+    left_index_finger_px = scale_point(left_index_finger, frame.shape)
+    right_index_finger_px = scale_point(right_index_finger, frame.shape)
+    left_mouth_px = scale_point(left_mouth, frame.shape)
+
+    # Add the distance between the index finger and the mouth
+    middle_point_left_and_right_fingers = midpoint(
+        left_index_finger_px, right_index_finger_px
+    )
+    distance = middle_point_left_and_right_fingers[1] - left_mouth_px[1]
+    cv2.putText(
+        frame,
+        f"{distance}",
+        (
+            middle_point_left_and_right_fingers[0] + 10,
+            middle_point_left_and_right_fingers[1] - 10,
+        ),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        color,
+        1,
+        cv2.LINE_AA,
+    )
+
+    if distance > 0:
+        color = ColorsEnum.GREEN
+    else:
+        color = ColorsEnum.RED
+
+    cv2.line(
+        frame,
+        left_index_finger_px,
+        left_mouth_px,
+        color,
+        thickness,
+        cv2.LINE_AA,
+    )
+
+    return distance
+
+
+def draw_pullup_shoulder_engagement(
+    frame,
+    left_shoulder,
+    left_ear,
+    right_shoulder,
+    right_ear,
+    color=(0, 255, 255),
+    thickness=2,
+):
+    left_shoulder_px = scale_point(left_shoulder, frame.shape)
+    left_ear_px = scale_point(left_ear, frame.shape)
+    right_shoulder_px = scale_point(right_shoulder, frame.shape)
+    right_ear_px = scale_point(right_ear, frame.shape)
+
+    # Draw line from left shoulder to left ear
+    cv2.line(frame, left_shoulder_px, left_ear_px, color, thickness, cv2.LINE_AA)
+
+    # Draw line from right shoulder to right ear
+    cv2.line(frame, right_shoulder_px, right_ear_px, color, thickness, cv2.LINE_AA)
+
+    # Add the distance between the shoulder and the ear
+    distance_left_shoulder_to_ear = abs(left_ear_px[1] - left_shoulder_px[1])
+    cv2.putText(
+        frame,
+        f"{distance_left_shoulder_to_ear}",
+        (left_ear_px[0] + 10, left_ear_px[1] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        color,
+        1,
+        cv2.LINE_AA,
+    )
+
+    # Add the distance between the right shoulder and the right ear
+    distance_right_shoulder_to_ear = abs(right_ear_px[1] - right_shoulder_px[1])
+    cv2.putText(
+        frame,
+        f"{distance_right_shoulder_to_ear}",
+        (right_ear_px[0] + 10, right_ear_px[1] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        color,
+        1,
+        cv2.LINE_AA,
+    )
+
+    return distance_left_shoulder_to_ear, distance_right_shoulder_to_ear

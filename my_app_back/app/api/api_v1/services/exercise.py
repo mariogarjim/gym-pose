@@ -10,6 +10,8 @@ from app.api.api_v1.services.draw import (
     draw_squad_depth,
     draw_head_alignment,
     draw_landmarks,
+    draw_pullup_chin_over_bar,
+    draw_pullup_shoulder_engagement,
 )
 
 
@@ -60,6 +62,8 @@ class ExerciseFactory:
             return ExerciseSquad
         elif exercise == ExerciseEnum.BENCH_PRESS:
             return ExerciseBenchPress
+        elif exercise == ExerciseEnum.PULL_UP:
+            return ExercisePullUp
         else:
             raise ValueError(f"Exercise {exercise} not supported")
 
@@ -92,6 +96,10 @@ class ExerciseSquad(BaseExercise):
         self.deepest_frame = 0
         self.head_alignment = [0] * self.total_frames
 
+        self.back_posture_drawn_frames = []
+        self.deep_squad_drawn_frames = []
+        self.head_alignment_drawn_frames = []
+
         # Temporal windows parameters
         self.window_size = 30
         self.window_threshold_frames = 10
@@ -121,20 +129,26 @@ class ExerciseSquad(BaseExercise):
         # Define a line going down from the hip
         torso_vec = np.array(hip) - np.array(shoulder)
 
-        back_posture_angle = draw_back_posture(frame_img, shoulder, hip, torso_vec)
+        copy_frame_img = frame_img.copy()
+        back_posture_angle = draw_back_posture(copy_frame_img, shoulder, hip, torso_vec)
+        self.back_posture_drawn_frames.append(frame)
         if back_posture_angle > 40:
             self.back_posture[frame] = 1
 
         # [SQUAD-02] Squad depth:
         depth = hip[1] - knee[1]
-        draw_squad_depth(frame_img, hip, knee, depth)
+        copy_frame_img = frame_img.copy()
+        draw_squad_depth(copy_frame_img, hip, knee, depth)
+        self.deep_squad_drawn_frames.append(frame)
         if depth > 0:
             self.deep_squad = True
 
         # [SQUAD-03] Head alignment:
         horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
         max_offset = 0.1
-        draw_head_alignment(frame_img, ear, shoulder, max_offset)
+        copy_frame_img = frame_img.copy()
+        draw_head_alignment(copy_frame_img, ear, shoulder, max_offset)
+        self.head_alignment_drawn_frames.append(frame)
         if horizontal_offset > max_offset:
             self.head_alignment[frame] = 1
 
@@ -151,7 +165,7 @@ class ExerciseSquad(BaseExercise):
         print("Head alignment vector: ", self.head_alignment)
         print("########################")
 
-    def get_feedback_based_on_temporal_window(
+    def _get_feedback_based_on_temporal_window(
         self,
         number_of_windows: int,
         measure: ExerciseMeasureEnum,
@@ -183,11 +197,15 @@ class ExerciseSquad(BaseExercise):
 
     def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
         feedback = {}
+        relevant_videos = {}
 
         if not self.deep_squad:
             feedback[ExerciseMeasureEnum.SQUAT_DEPTH] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.IMPROVABLE,
                 comment="The squat is not deep enough",
+            )
+            relevant_videos[ExerciseMeasureEnum.SQUAT_DEPTH] = (
+                self.deep_squad_drawn_frames
             )
         else:
             feedback[ExerciseMeasureEnum.SQUAT_DEPTH] = ExerciseFeedback(
@@ -202,13 +220,16 @@ class ExerciseSquad(BaseExercise):
 
         number_of_windows = self.total_frames // self.window_size
 
-        squat_torso_angle_feedback = self.get_feedback_based_on_temporal_window(
+        squat_torso_angle_feedback = self._get_feedback_based_on_temporal_window(
             number_of_windows=number_of_windows,
             measure=ExerciseMeasureEnum.SQUAT_TORSO_ANGLE,
             measure_feedback=self.back_posture,
         )
         if squat_torso_angle_feedback:
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = squat_torso_angle_feedback
+            relevant_videos[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = (
+                self.back_posture_drawn_frames
+            )
         else:
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.OPTIMAL,
@@ -220,7 +241,7 @@ class ExerciseSquad(BaseExercise):
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE],
         )
 
-        head_alignment_feedback = self.get_feedback_based_on_temporal_window(
+        head_alignment_feedback = self._get_feedback_based_on_temporal_window(
             number_of_windows=number_of_windows,
             measure=ExerciseMeasureEnum.HEAD_ALIGNMENT,
             measure_feedback=self.head_alignment,
@@ -228,6 +249,9 @@ class ExerciseSquad(BaseExercise):
 
         if head_alignment_feedback:
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT] = head_alignment_feedback
+            relevant_videos[ExerciseMeasureEnum.HEAD_ALIGNMENT] = (
+                self.head_alignment_drawn_frames
+            )
         else:
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.OPTIMAL,
@@ -239,7 +263,7 @@ class ExerciseSquad(BaseExercise):
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT],
         )
 
-        return feedback
+        return feedback, relevant_videos
 
 
 class ExerciseBenchPress(BaseExercise):
@@ -259,3 +283,90 @@ class ExerciseBenchPress(BaseExercise):
         feedback = {}
 
         return feedback
+
+
+class ExercisePullUp(BaseExercise):
+    def __init__(self, total_frames: int):
+        super().__init__(ExerciseEnum.PULL_UP, total_frames)
+
+        self.chin_over_bar = [0] * self.total_frames
+        self.body_control = [0] * self.total_frames
+        self.shoulder_engagement = [0] * self.total_frames
+
+    def evaluate_frame(
+        self,
+        frame_img: np.ndarray,
+        frame: int,
+        landmarks: NormalizedLandmarkList,
+        error_threshold: float = 0.05,
+    ):
+        # Get landmark coordinates using landmark indices
+        left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
+        right_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_HIP.value]
+        left_shoulder = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.LEFT_SHOULDER.value
+        ]
+        right_shoulder = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER.value
+        ]
+        left_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_EAR.value]
+        right_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_EAR.value]
+        left_mouth = landmarks.landmark[mp.solutions.pose.PoseLandmark.MOUTH_LEFT.value]
+        left_index_finger = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.LEFT_INDEX.value
+        ]
+        right_index_finger = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.RIGHT_INDEX.value
+        ]
+
+        # Convert landmarks to points for angle calculation
+        right_hip = [float(right_hip.x), float(right_hip.y)]
+        left_hip = [float(left_hip.x), float(left_hip.y)]
+        left_shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
+        right_shoulder = [float(right_shoulder.x), float(right_shoulder.y)]
+        left_ear = [float(left_ear.x), float(left_ear.y)]
+        right_ear = [float(right_ear.x), float(right_ear.y)]
+        left_mouth = [float(left_mouth.x), float(left_mouth.y)]
+        left_index_finger = [
+            float(left_index_finger.x),
+            float(left_index_finger.y),
+        ]
+        right_index_finger = [
+            float(right_index_finger.x),
+            float(right_index_finger.y),
+        ]
+
+        # [PULLUP-01] Chin over bar:
+        chin_over_bar = draw_pullup_chin_over_bar(
+            frame_img, left_index_finger, right_index_finger, left_mouth
+        )
+        if chin_over_bar > 0:
+            self.chin_over_bar[frame] = 1
+
+        # [PULLUP-03] Shoulder Engagement
+        left_shoulder_to_ear_distance, right_shoulder_to_ear_distance = (
+            draw_pullup_shoulder_engagement(
+                frame_img, left_shoulder, left_ear, right_shoulder, right_ear
+            )
+        )
+        threshold = int(0.05 * frame_img.shape[0])
+        if (
+            left_shoulder_to_ear_distance < threshold
+            or right_shoulder_to_ear_distance < threshold
+        ):
+            self.shoulder_engagement[frame] = 1
+
+        print("########################")
+        print("Frame: ", frame)
+        print("Chin over bar: ", self.chin_over_bar[frame])
+        print("Body control: ", self.body_control[frame])
+        print(
+            f"Shoulder engagement: {self.shoulder_engagement[frame]}. Left shoulder to ear distance: {left_shoulder_to_ear_distance}. Right shoulder to ear distance: {right_shoulder_to_ear_distance}"
+        )
+        print("########################")
+
+    def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
+        feedback = {}
+        relevant_videos = {}
+
+        return feedback, relevant_videos
