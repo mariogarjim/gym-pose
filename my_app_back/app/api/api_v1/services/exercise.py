@@ -3,7 +3,6 @@ import numpy as np
 import mediapipe as mp
 from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExerciseFeedbackEnum
 from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmarkList
-from app.constants import MAPPING_EXERCISE_TO_EXERCISE_MEASURE
 from app.utils import calculate_angle
 from app.api.api_v1.services.draw import (
     draw_back_posture,
@@ -12,6 +11,7 @@ from app.api.api_v1.services.draw import (
     draw_landmarks,
     draw_pullup_chin_over_bar,
     draw_pullup_shoulder_engagement,
+    draw_pullup_arms_nearly_extended,
 )
 
 
@@ -84,6 +84,35 @@ class BaseExercise:
 
     def summarize_feedback(self):
         raise NotImplementedError("Subclasses must implement this method")
+
+    def get_relevant_feedback_windows(
+        self,
+        number_of_windows: int,
+        measure: ExerciseMeasureEnum,
+        measure_feedback: t.List[int],
+        window_threshold_frames: int,
+        exercise_feedback: ExerciseFeedback,
+    ) -> t.List[RelevantFeedbackWindow]:
+        relevant_windows = []
+        for window_index in range(number_of_windows):
+            current_window_start = window_index * self.window_size
+            current_window_end = current_window_start + self.window_size
+            window = measure_feedback[current_window_start:current_window_end]
+
+            relevant_frames = np.sum(window)
+            if relevant_frames >= window_threshold_frames:
+                relevant_windows.append(
+                    RelevantFeedbackWindow(
+                        window=window,
+                        measure=measure.value,
+                        from_frame=current_window_start,
+                        to_frame=current_window_end,
+                        number_of_relevant_frames=relevant_frames,
+                        exercise_feedback=exercise_feedback,
+                    )
+                )
+
+        return relevant_windows
 
 
 class ExerciseSquad(BaseExercise):
@@ -165,36 +194,6 @@ class ExerciseSquad(BaseExercise):
         print("Head alignment vector: ", self.head_alignment)
         print("########################")
 
-    def _get_feedback_based_on_temporal_window(
-        self,
-        number_of_windows: int,
-        measure: ExerciseMeasureEnum,
-        measure_feedback: t.List[int],
-    ) -> t.List[RelevantFeedbackWindow]:
-        relevant_windows = []
-        for window_index in range(number_of_windows):
-            current_window_start = window_index * self.window_size
-            current_window_end = current_window_start + self.window_size
-            window = measure_feedback[current_window_start:current_window_end]
-
-            relevant_frames = np.sum(window)
-            if relevant_frames >= self.window_threshold_frames:
-                relevant_windows.append(
-                    RelevantFeedbackWindow(
-                        window=window,
-                        measure=measure.value,
-                        from_frame=current_window_start,
-                        to_frame=current_window_end,
-                        number_of_relevant_frames=relevant_frames,
-                        exercise_feedback=ExerciseFeedback(
-                            feedback=ExerciseFeedbackEnum.HARMFUL,
-                            comment=f"The {measure.value} is harmful from frames {current_window_start} to {current_window_end}",
-                        ),
-                    )
-                )
-
-        return relevant_windows
-
     def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
         feedback = {}
         relevant_videos = {}
@@ -220,10 +219,17 @@ class ExerciseSquad(BaseExercise):
 
         number_of_windows = self.total_frames // self.window_size
 
-        squat_torso_angle_feedback = self._get_feedback_based_on_temporal_window(
+        exercise_feedback = ExerciseFeedback(
+            feedback=ExerciseFeedbackEnum.HARMFUL,
+            comment="Not straight back during the movement is harmful",
+        )
+
+        squat_torso_angle_feedback = super().get_relevant_feedback_windows(
             number_of_windows=number_of_windows,
             measure=ExerciseMeasureEnum.SQUAT_TORSO_ANGLE,
             measure_feedback=self.back_posture,
+            window_threshold_frames=self.window_threshold_frames,
+            exercise_feedback=exercise_feedback,
         )
         if squat_torso_angle_feedback:
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = squat_torso_angle_feedback
@@ -241,10 +247,17 @@ class ExerciseSquad(BaseExercise):
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE],
         )
 
-        head_alignment_feedback = self._get_feedback_based_on_temporal_window(
+        exercise_feedback = ExerciseFeedback(
+            feedback=ExerciseFeedbackEnum.HARMFUL,
+            comment="Not aligned head with the spine is harmful.",
+        )
+
+        head_alignment_feedback = super().get_relevant_feedback_windows(
             number_of_windows=number_of_windows,
             measure=ExerciseMeasureEnum.HEAD_ALIGNMENT,
             measure_feedback=self.head_alignment,
+            window_threshold_frames=self.window_threshold_frames,
+            exercise_feedback=exercise_feedback,
         )
 
         if head_alignment_feedback:
@@ -292,13 +305,21 @@ class ExercisePullUp(BaseExercise):
         self.chin_over_bar = [0] * self.total_frames
         self.body_control = [0] * self.total_frames
         self.shoulder_engagement = [0] * self.total_frames
+        self.arms_nearly_extended = [0] * self.total_frames
+
+        # Temporal windows parameters for feedback
+        self.window_size = 30
+
+        # Drawn frames
+        self.chin_over_bar_drawn_frames = []
+        self.shoulder_engagement_drawn_frames = []
+        self.arms_nearly_extended_drawn_frames = []
 
     def evaluate_frame(
         self,
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-        error_threshold: float = 0.05,
     ):
         # Get landmark coordinates using landmark indices
         left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
@@ -309,6 +330,8 @@ class ExercisePullUp(BaseExercise):
         right_shoulder = landmarks.landmark[
             mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER.value
         ]
+        left_elbow = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_ELBOW.value]
+        left_wrist = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_WRIST.value]
         left_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_EAR.value]
         right_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_EAR.value]
         left_mouth = landmarks.landmark[mp.solutions.pose.PoseLandmark.MOUTH_LEFT.value]
@@ -324,6 +347,8 @@ class ExercisePullUp(BaseExercise):
         left_hip = [float(left_hip.x), float(left_hip.y)]
         left_shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
         right_shoulder = [float(right_shoulder.x), float(right_shoulder.y)]
+        left_elbow = [float(left_elbow.x), float(left_elbow.y)]
+        left_wrist = [float(left_wrist.x), float(left_wrist.y)]
         left_ear = [float(left_ear.x), float(left_ear.y)]
         right_ear = [float(right_ear.x), float(right_ear.y)]
         left_mouth = [float(left_mouth.x), float(left_mouth.y)]
@@ -336,20 +361,41 @@ class ExercisePullUp(BaseExercise):
             float(right_index_finger.y),
         ]
 
-        # [PULLUP-01] Chin over bar:
-        chin_over_bar = draw_pullup_chin_over_bar(
-            frame_img, left_index_finger, right_index_finger, left_mouth
+        # [PULLUP-01] Full range of motion:
+
+        ## Botton (arms nearly extended)
+        arms_angle = calculate_angle(left_shoulder, left_elbow, left_wrist)
+        if arms_angle > 160:
+            self.arms_nearly_extended[frame] = 1
+        copy_frame_img = frame_img.copy()
+        draw_pullup_arms_nearly_extended(
+            copy_frame_img,
+            left_shoulder,
+            left_elbow,
+            left_wrist,
+            arms_angle,
         )
+        self.arms_nearly_extended_drawn_frames.append(frame)
+
+        ## Top (chin over bar)
+        copy_frame_img = frame_img.copy()
+        chin_over_bar = draw_pullup_chin_over_bar(
+            copy_frame_img, left_index_finger, right_index_finger, left_mouth
+        )
+        self.chin_over_bar_drawn_frames.append(frame)
         if chin_over_bar > 0:
             self.chin_over_bar[frame] = 1
 
-        # [PULLUP-03] Shoulder Engagement
+        # [PULLUP-02] Shoulder Engagement
+        copy_frame_img = frame_img.copy()
         left_shoulder_to_ear_distance, right_shoulder_to_ear_distance = (
             draw_pullup_shoulder_engagement(
-                frame_img, left_shoulder, left_ear, right_shoulder, right_ear
+                copy_frame_img, left_shoulder, left_ear, right_shoulder, right_ear
             )
         )
-        threshold = int(0.05 * frame_img.shape[0])
+        self.shoulder_engagement_drawn_frames.append(frame)
+        offset = 10
+        threshold = int(0.05 * frame_img.shape[0]) + offset
         if (
             left_shoulder_to_ear_distance < threshold
             or right_shoulder_to_ear_distance < threshold
@@ -359,14 +405,90 @@ class ExercisePullUp(BaseExercise):
         print("########################")
         print("Frame: ", frame)
         print("Chin over bar: ", self.chin_over_bar[frame])
-        print("Body control: ", self.body_control[frame])
         print(
-            f"Shoulder engagement: {self.shoulder_engagement[frame]}. Left shoulder to ear distance: {left_shoulder_to_ear_distance}. Right shoulder to ear distance: {right_shoulder_to_ear_distance}"
+            f"Shoulder engagement: {self.shoulder_engagement[frame]}. Left shoulder to ear distance: {left_shoulder_to_ear_distance}. Right shoulder to ear distance: {right_shoulder_to_ear_distance}. Threshold: {threshold}"
         )
         print("########################")
 
     def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
+        trheshold_frames_arms_nearly_extended = 3
+        threshold_frames_chin_over_bar = 3
+        threshold_frames_shoulder_engagement = 10
+
+        number_of_windows = self.total_frames // self.window_size
+
         feedback = {}
         relevant_videos = {}
+
+        arms_nearly_extended_feedback = super().get_relevant_feedback_windows(
+            number_of_windows=number_of_windows,
+            measure=ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED,
+            measure_feedback=self.arms_nearly_extended,
+            window_threshold_frames=trheshold_frames_arms_nearly_extended,
+            exercise_feedback=ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.OPTIMAL,
+                comment="For the down phase, the arms are correctly extended",
+            ),
+        )
+        if arms_nearly_extended_feedback:
+            feedback[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
+                arms_nearly_extended_feedback
+            )
+            relevant_videos[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
+                self.arms_nearly_extended_drawn_frames
+            )
+        else:
+            feedback[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
+                ExerciseFeedback(
+                    feedback=ExerciseFeedbackEnum.IMPROVABLE,
+                    comment="For the down phase, the arms are not extended",
+                )
+            )
+
+        chin_over_bar_feedback = super().get_relevant_feedback_windows(
+            number_of_windows=number_of_windows,
+            measure=ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR,
+            measure_feedback=self.chin_over_bar,
+            window_threshold_frames=threshold_frames_chin_over_bar,
+            exercise_feedback=ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.OPTIMAL,
+                comment="For the up phase, the chin is correctly over the bar",
+            ),
+        )
+        if chin_over_bar_feedback:
+            feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = chin_over_bar_feedback
+            relevant_videos[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = (
+                self.chin_over_bar_drawn_frames
+            )
+        else:
+            feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.IMPROVABLE,
+                comment="For the up phase, the chin is not over the bar",
+            )
+
+        shoulder_engagement_feedback = super().get_relevant_feedback_windows(
+            number_of_windows=number_of_windows,
+            measure=ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT,
+            measure_feedback=self.shoulder_engagement,
+            window_threshold_frames=threshold_frames_shoulder_engagement,
+            exercise_feedback=ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.HARMFUL,
+                comment="The shoulders are not engaged throughout the movement. The shoulders remain inactive and unstable, contributing to improper form and injury prevention.",
+            ),
+        )
+        if shoulder_engagement_feedback:
+            feedback[ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT] = (
+                shoulder_engagement_feedback
+            )
+            relevant_videos[ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT] = (
+                self.shoulder_engagement_drawn_frames
+            )
+        else:
+            feedback[ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT] = (
+                ExerciseFeedback(
+                    feedback=ExerciseFeedbackEnum.OPTIMAL,
+                    comment="Excellent shoulder engagement throughout the movement. The shoulders remain active and stable, contributing to proper form and injury prevention.",
+                )
+            )
 
         return feedback, relevant_videos

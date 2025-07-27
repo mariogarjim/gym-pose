@@ -278,6 +278,22 @@ def draw_head_alignment(
 #### PULLUP ####
 
 
+def draw_pullup_arms_nearly_extended(
+    frame,
+    left_shoulder,
+    left_elbow,
+    left_wrist,
+    arms_angle,
+    color=(0, 255, 255),
+    thickness=2,
+):
+    left_shoulder_px = scale_point(left_shoulder, frame.shape)
+    left_elbow_px = scale_point(left_elbow, frame.shape)
+    left_wrist_px = scale_point(left_wrist, frame.shape)
+
+    draw_angle(frame, left_elbow_px, left_shoulder_px, left_wrist_px, color, thickness)
+
+
 def draw_pullup_chin_over_bar(
     frame,
     left_index_finger,
