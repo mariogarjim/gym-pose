@@ -95,11 +95,13 @@ async def upload_video(
         cap.release()
         out.release()
 
-        feedback = exercise.summarize_feedback()
+        feedback, relevant_videos = exercise.summarize_feedback()
         print("feedback_test: ", feedback)
-        generated_feedback = feedback_service.generate_feedback(
-            feedback=feedback,
-        )
+        print("relevant_videos: ", relevant_videos)
+        generated_feedback = ""
+        # generated_feedback = feedback_service.generate_feedback(
+        #    feedback=feedback,
+        # )
 
         print("generated_feedback: ", generated_feedback)
 
