@@ -33,17 +33,7 @@ The ear should remain roughly aligned vertically with the shoulder or hip, depen
 **Durante cada repetición**
 
 ---
-
-2. [PULLUP-03] Body Control (No Kipping or Swinging)
-
-- The torso should remain relatively vertical and stable throughout the movement.
-- Excessive swinging of the hips or legs indicates lack of control or momentum-based lifting (kipping).
-- Look for horizontal displacement of hips and/or ankles.  
-**Durante toda la repetición**
-
----
-
-3. [PULLUP-04] Shoulder Engagement
+2. [PULLUP-02] Shoulder Engagement
 
 - The shoulders should remain depressed and retracted, not elevated toward the ears.
 - A consistent distance between the shoulders and ears indicates scapular control.
@@ -51,9 +41,3 @@ The ear should remain roughly aligned vertically with the shoulder or hip, depen
 **Durante toda la repetición**
 
 ---
-
-4. [PULLUP-05] Feet Crossed for Stability
-
-- The feet should be crossed or at least remain close together to reduce lower body swing.
-- Excessive distance between ankles horizontally (or vertically if one leg hangs lower) suggests poor lower-body control.  
-**Durante toda la repetición**
