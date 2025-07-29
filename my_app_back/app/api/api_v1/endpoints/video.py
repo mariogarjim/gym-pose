@@ -28,7 +28,9 @@ def iterfile(file_like: BinaryIO):
 
 @router.post("/upload")
 async def upload_video(
-    file: UploadFile = File(...), exercise_type: ExerciseEnum = Query(...)
+    file: UploadFile = File(...),
+    exercise_type: ExerciseEnum = Query(...),
+    drawn_all: bool = Query(False),
 ) -> StreamingResponse:
     """
     Upload and process a video file.
@@ -86,7 +88,10 @@ async def upload_video(
 
                 if landmarks:
                     exercise.evaluate_frame(
-                        frame_img=frame, frame=frame_count, landmarks=landmarks
+                        frame_img=frame,
+                        frame=frame_count,
+                        landmarks=landmarks,
+                        drawn_all=drawn_all,
                     )
 
                 out.write(frame)

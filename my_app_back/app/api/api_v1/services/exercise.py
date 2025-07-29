@@ -78,7 +78,7 @@ class BaseExercise:
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-        error_threshold: float,
+        drawn_all: bool = False,
     ):
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -138,7 +138,7 @@ class ExerciseSquad(BaseExercise):
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-        error_threshold: float = 0.05,
+        drawn_all: bool = False,
     ):
         # Get landmark coordinates using landmark indices
         left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
@@ -161,6 +161,8 @@ class ExerciseSquad(BaseExercise):
         copy_frame_img = frame_img.copy()
         back_posture_angle = draw_back_posture(copy_frame_img, shoulder, hip, torso_vec)
         self.back_posture_drawn_frames.append(frame)
+        if drawn_all:
+            draw_back_posture(frame_img, shoulder, hip, torso_vec)
         if back_posture_angle > 40:
             self.back_posture[frame] = 1
 
@@ -169,6 +171,8 @@ class ExerciseSquad(BaseExercise):
         copy_frame_img = frame_img.copy()
         draw_squad_depth(copy_frame_img, hip, knee, depth)
         self.deep_squad_drawn_frames.append(frame)
+        if drawn_all:
+            draw_squad_depth(frame_img, hip, knee, depth)
         if depth > 0:
             self.deep_squad = True
 
@@ -178,6 +182,8 @@ class ExerciseSquad(BaseExercise):
         copy_frame_img = frame_img.copy()
         draw_head_alignment(copy_frame_img, ear, shoulder, max_offset)
         self.head_alignment_drawn_frames.append(frame)
+        if drawn_all:
+            draw_head_alignment(frame_img, ear, shoulder, max_offset)
         if horizontal_offset > max_offset:
             self.head_alignment[frame] = 1
 
@@ -288,7 +294,7 @@ class ExerciseBenchPress(BaseExercise):
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-        error_threshold: float = 0.05,
+        drawn_all: bool = False,
     ):
         draw_landmarks(frame_img, landmarks)
 
@@ -320,6 +326,7 @@ class ExercisePullUp(BaseExercise):
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
+        drawn_all: bool = False,
     ):
         # Get landmark coordinates using landmark indices
         left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
@@ -376,6 +383,14 @@ class ExercisePullUp(BaseExercise):
             arms_angle,
         )
         self.arms_nearly_extended_drawn_frames.append(frame)
+        if drawn_all:
+            draw_pullup_arms_nearly_extended(
+                frame_img,
+                left_shoulder,
+                left_elbow,
+                left_wrist,
+                arms_angle,
+            )
 
         ## Top (chin over bar)
         copy_frame_img = frame_img.copy()
@@ -383,6 +398,10 @@ class ExercisePullUp(BaseExercise):
             copy_frame_img, left_index_finger, right_index_finger, left_mouth
         )
         self.chin_over_bar_drawn_frames.append(frame)
+        if drawn_all:
+            draw_pullup_chin_over_bar(
+                frame_img, left_index_finger, right_index_finger, left_mouth
+            )
         if chin_over_bar > 0:
             self.chin_over_bar[frame] = 1
 
@@ -394,6 +413,11 @@ class ExercisePullUp(BaseExercise):
             )
         )
         self.shoulder_engagement_drawn_frames.append(frame)
+        if drawn_all:
+            draw_pullup_shoulder_engagement(
+                frame_img, left_shoulder, left_ear, right_shoulder, right_ear
+            )
+
         offset = 10
         threshold = int(0.05 * frame_img.shape[0]) + offset
         if (
