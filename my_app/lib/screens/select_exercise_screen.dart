@@ -1,11 +1,19 @@
 import 'dart:async';
-import 'dart:io';
-
+import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:my_app/core/api/video_upload_service.dart';
+
+final exerciseType = {
+  "Squats": "squat",
+  "Pull-ups": "pull_up",
+  "Bench Press": "bench_press",
+  "Deadlifts": "deadlifts",
+  "Push-ups": "push_ups",
+};
 
 class SelectExerciseScreen extends StatefulWidget {
-  const SelectExerciseScreen({super.key, required this.video});
-  final File video;
+  const SelectExerciseScreen({super.key, required this.videoPath});
+  final String videoPath;
 
   @override
   State<SelectExerciseScreen> createState() => _SelectExerciseScreenState();
@@ -42,32 +50,42 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
     "Preparing demonstration videos..."
   ];
 
-  void startAnalysis() {
-    if (selectedExercise == null) return;
+  void startAnalysis() async {
+  if (selectedExercise == null) return;
 
+  log("Selected exercise: $selectedExercise");
+
+  setState(() {
+    isAnalyzing = true;
+    progress = 0;
+    currentStep = 0;
+  });
+
+  // Start simulated progress timer
+  timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
     setState(() {
-      isAnalyzing = true;
-      progress = 0;
-      currentStep = 0;
-    });
-
-    timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      setState(() {
-        progress += 2;
-        currentStep =
-            (progress / 100 * analysisSteps.length).floor().clamp(0, analysisSteps.length - 1);
-
-        if (progress >= 100) {
-          timer.cancel();
-          // Navigate to results or handle after analysis
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted) {
-              Navigator.pushReplacementNamed(context, '/results');
-            }
-          });
+      progress += 2;
+      if (progress < 98) {
+        currentStep = (progress / 100 * analysisSteps.length)
+              .floor()
+              .clamp(0, analysisSteps.length - 1);
         }
-      });
     });
+  });
+
+  
+     final videoData = await VideoUploadService.uploadVideo(
+       videoPath: widget.videoPath,
+       exerciseType: exerciseType[selectedExercise]!,
+     );
+    log("Video uploaded: ${videoData.length} bytes");
+
+    // ✅ Upload complete — stop the timer and navigate
+    timer?.cancel();
+
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/results');
+    }
   }
 
   @override
@@ -197,13 +215,9 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
                 ),
               ),
             ),
-            if (selectedExercise == null)
-              const Padding(
-                padding: EdgeInsets.only(top: 12),
-                child: Text(
-                  "Please select an exercise to continue",
-                  style: TextStyle(color: Colors.grey),
-                ),
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: selectedExercise == null ? const Text("Please select an exercise to continue", style: TextStyle(color: Colors.grey)) : const Text(""),
               ),
           ],
         ),

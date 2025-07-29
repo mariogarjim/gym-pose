@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
 
         // Create a temporary file to store the video
-        final tempFile = await _saveVideoToTemp(video);
+        final tempFilePath = await _saveVideoToTemp(video);
 
         setState(() {
           _isProcessing = false;
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => SelectExerciseScreen(video: tempFile)),
+            MaterialPageRoute(builder: (context) => SelectExerciseScreen(videoPath: tempFilePath)),
           );
         }
         
@@ -67,12 +67,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<File> _saveVideoToTemp(XFile video) async {
+  Future<String> _saveVideoToTemp(XFile video) async {
     final tempDir = await getTemporaryDirectory();
     final filePath = path.join(tempDir.path, 'response_${DateTime.now().millisecondsSinceEpoch}.mp4');
     final file = File(filePath);
     final bytes = await video.readAsBytes();
-    return await file.writeAsBytes(bytes);
+    await file.writeAsBytes(bytes);
+    return filePath;
   }
 
   void _showSnackBar(String message) {
