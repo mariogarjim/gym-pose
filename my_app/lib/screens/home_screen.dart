@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/chat_message.dart';
 import '../core/api/video_upload_service.dart';
@@ -32,45 +34,84 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _pickAndUploadVideo() async {
-    final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-    if (video == null) return;
-
-    final ext = path.extension(video.path).toLowerCase();
-    if (ext != '.mp4') {
-      _showSnackBar('Only MP4 videos are supported.');
-      return;
-    }
-
-    final userFile = File(video.path);
-
-    setState(() {
-      _chatMessages.add(ChatMessage(type: MessageType.userVideo, userVideo: userFile));
-    });
-    _scrollToBottom();
-
-    setState(() => _isUploading = true);
-
     try {
-      final responseBytes = await VideoUploadService.uploadVideo(userFile);
+      // Request both permissions
+      final videoStatus = await Permission.videos.request();
+      final imageStatus = await Permission.photos.request();
+      
+      log('video permission: ${videoStatus.isGranted}');
+      log('image permission: ${imageStatus.isGranted}');
+      
+      if (videoStatus.isGranted || imageStatus.isGranted) {
+        final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
+        log('video path: ${video?.path}');
+        if (video == null) return;
 
-      final outputFile = await _saveProcessedVideo(responseBytes);
+        final ext = path.extension(video.path).toLowerCase();
+        if (ext != '.mp4') {
+          _showSnackBar('Only MP4 videos are supported.');
+          return;
+        }
 
-      // Dummy response text for now
-      const responseText = 'Here is your processed video response!';
+        final userFile = File(video.path);
 
-      setState(() {
-        _chatMessages.add(ChatMessage(
-          type: MessageType.systemReply,
-          text: responseText,
-          systemVideo: outputFile,
-        ));
-      });
+        setState(() {
+          _chatMessages.add(ChatMessage(type: MessageType.userVideo, userVideo: userFile));
+        });
+        _scrollToBottom();
 
-      _scrollToBottom();
+        setState(() => _isUploading = true);
+
+        try {
+          final responseBytes = await VideoUploadService.uploadVideo(userFile);
+
+          final outputFile = await _saveProcessedVideo(responseBytes);
+
+          // Dummy response text for now
+          const responseText = 'Here is your processed video response!';
+
+          setState(() {
+            _chatMessages.add(ChatMessage(
+              type: MessageType.systemReply,
+              text: responseText,
+              systemVideo: outputFile,
+            ));
+          });
+
+          _scrollToBottom();
+        } catch (e) {
+          _showSnackBar('Upload failed: $e');
+        } finally {
+          setState(() => _isUploading = false);
+        }
+      } else {
+        // Ask again if denied
+        if (mounted) {
+          final bool? retry = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Permission Required'),
+              content: const Text('Storage permission is needed to select videos. Would you like to grant permission?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('No'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Yes'),
+                ),
+              ],
+            ),
+          );
+          
+          if (retry == true) {
+            _pickAndUploadVideo(); // Try again
+          }
+        }
+      }
     } catch (e) {
-      _showSnackBar('Upload failed: $e');
-    } finally {
-      setState(() => _isUploading = false);
+      _showSnackBar('Error picking video: $e');
     }
   }
 
