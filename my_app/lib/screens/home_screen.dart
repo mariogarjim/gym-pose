@@ -1,14 +1,12 @@
-import 'dart:io';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-
-import '../models/chat_message.dart';
-import '../core/api/video_upload_service.dart';
+import '../screens/select_exercise_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,20 +16,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final List<ChatMessage> _chatMessages = [];
   final ImagePicker _picker = ImagePicker();
-  bool _isUploading = false;
-  final ScrollController _scrollController = ScrollController();
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
-  }
+  bool _isProcessing = false;
 
   Future<void> _pickAndUploadVideo() async {
     try {
@@ -53,72 +39,39 @@ class _HomeScreenState extends State<HomeScreen> {
           return;
         }
 
-        final userFile = File(video.path);
+        setState(() {
+          _isProcessing = true;
+        });
+
+        // Create a temporary file to store the video
+        final tempFile = await _saveVideoToTemp(video);
 
         setState(() {
-          _chatMessages.add(ChatMessage(type: MessageType.userVideo, userVideo: userFile));
+          _isProcessing = false;
         });
-        _scrollToBottom();
 
-        setState(() => _isUploading = true);
-
-        try {
-          final responseBytes = await VideoUploadService.uploadVideo(userFile);
-
-          final outputFile = await _saveProcessedVideo(responseBytes);
-
-          // Dummy response text for now
-          const responseText = 'Here is your processed video response!';
-
-          setState(() {
-            _chatMessages.add(ChatMessage(
-              type: MessageType.systemReply,
-              text: responseText,
-              systemVideo: outputFile,
-            ));
-          });
-
-          _scrollToBottom();
-        } catch (e) {
-          _showSnackBar('Upload failed: $e');
-        } finally {
-          setState(() => _isUploading = false);
-        }
-      } else {
-        // Ask again if denied
+        // Redirect to the select exercise screen
         if (mounted) {
-          final bool? retry = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Permission Required'),
-              content: const Text('Storage permission is needed to select videos. Would you like to grant permission?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('No'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Yes'),
-                ),
-              ],
-            ),
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => SelectExerciseScreen(video: tempFile)),
           );
-          
-          if (retry == true) {
-            _pickAndUploadVideo(); // Try again
-          }
         }
+        
+
+      } else {
+        _showSnackBar('Permission denied. Change settings to allow access to videos and images.');
       }
     } catch (e) {
       _showSnackBar('Error picking video: $e');
     }
   }
 
-  Future<File> _saveProcessedVideo(List<int> bytes) async {
+  Future<File> _saveVideoToTemp(XFile video) async {
     final tempDir = await getTemporaryDirectory();
     final filePath = path.join(tempDir.path, 'response_${DateTime.now().millisecondsSinceEpoch}.mp4');
     final file = File(filePath);
+    final bytes = await video.readAsBytes();
     return await file.writeAsBytes(bytes);
   }
 
@@ -128,7 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -146,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: InkWell(
-                onTap: _isUploading ? null : _pickAndUploadVideo,
+                onTap: _isProcessing ? null : _pickAndUploadVideo,
                 borderRadius: BorderRadius.circular(16),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
@@ -177,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
-                      if (_isUploading)
+                      if (_isProcessing)
                         const CircularProgressIndicator()
                       else
                         ElevatedButton.icon(
