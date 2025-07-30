@@ -6,7 +6,7 @@ import 'package:my_app/core/utils/mime_utils.dart';
 class VideoUploadService {
   static const String _baseUrl = 'http://10.0.2.2:8000/api/v1/video/upload';
 
-  static Future<List<int>> uploadVideo({required String videoPath, required String exerciseType}) async {
+  static Future<List<int>> uploadAndProcessVideo({required String videoPath, required String exerciseType}) async {
     final uri = Uri.parse(_baseUrl).replace(queryParameters: {
       'exercise_type': exerciseType,
     });

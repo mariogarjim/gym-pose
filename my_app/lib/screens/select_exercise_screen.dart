@@ -62,7 +62,7 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
   });
 
   // Start simulated progress timer
-  timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+  timer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
     setState(() {
       progress += 2;
       if (progress < 98) {
@@ -74,7 +74,7 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
   });
 
   
-     final videoData = await VideoUploadService.uploadVideo(
+     final videoData = await VideoUploadService.uploadAndProcessVideo(
        videoPath: widget.videoPath,
        exerciseType: exerciseType[selectedExercise]!,
      );
