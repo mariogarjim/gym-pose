@@ -55,6 +55,18 @@ class RelevantFeedbackWindow:
         return self.__str__()
 
 
+class SummarizedFeedback:
+    def __init__(
+        self,
+        feedback: dict[
+            ExerciseMeasureEnum, t.Union[ExerciseFeedback, RelevantFeedbackWindow]
+        ],
+        relevant_videos: dict[ExerciseMeasureEnum, list[np.ndarray]],
+    ):
+        self.feedback = feedback
+        self.relevant_videos = relevant_videos
+
+
 class ExerciseFactory:
     @staticmethod
     def get_exercise_strategy(exercise: ExerciseEnum):
@@ -160,7 +172,7 @@ class ExerciseSquad(BaseExercise):
 
         copy_frame_img = frame_img.copy()
         back_posture_angle = draw_back_posture(copy_frame_img, shoulder, hip, torso_vec)
-        self.back_posture_drawn_frames.append(frame)
+        self.back_posture_drawn_frames.append(copy_frame_img)
         if drawn_all:
             draw_back_posture(frame_img, shoulder, hip, torso_vec)
         if back_posture_angle > 40:
@@ -170,7 +182,7 @@ class ExerciseSquad(BaseExercise):
         depth = hip[1] - knee[1]
         copy_frame_img = frame_img.copy()
         draw_squad_depth(copy_frame_img, hip, knee, depth)
-        self.deep_squad_drawn_frames.append(frame)
+        self.deep_squad_drawn_frames.append(copy_frame_img)
         if drawn_all:
             draw_squad_depth(frame_img, hip, knee, depth)
         if depth > 0:
@@ -181,7 +193,7 @@ class ExerciseSquad(BaseExercise):
         max_offset = 0.1
         copy_frame_img = frame_img.copy()
         draw_head_alignment(copy_frame_img, ear, shoulder, max_offset)
-        self.head_alignment_drawn_frames.append(frame)
+        self.head_alignment_drawn_frames.append(copy_frame_img)
         if drawn_all:
             draw_head_alignment(frame_img, ear, shoulder, max_offset)
         if horizontal_offset > max_offset:
@@ -200,7 +212,9 @@ class ExerciseSquad(BaseExercise):
         print("Head alignment vector: ", self.head_alignment)
         print("########################")
 
-    def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
+    def summarize_feedback(
+        self,
+    ) -> SummarizedFeedback:
         feedback = {}
         relevant_videos = {}
 
@@ -282,7 +296,10 @@ class ExerciseSquad(BaseExercise):
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT],
         )
 
-        return feedback, relevant_videos
+        return SummarizedFeedback(
+            feedback=feedback,
+            relevant_videos=relevant_videos,
+        )
 
 
 class ExerciseBenchPress(BaseExercise):
@@ -298,10 +315,13 @@ class ExerciseBenchPress(BaseExercise):
     ):
         draw_landmarks(frame_img, landmarks)
 
-    def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
+    def summarize_feedback(self) -> SummarizedFeedback:
         feedback = {}
 
-        return feedback
+        return SummarizedFeedback(
+            feedback=feedback,
+            relevant_videos={},
+        )
 
 
 class ExercisePullUp(BaseExercise):
@@ -382,7 +402,7 @@ class ExercisePullUp(BaseExercise):
             left_wrist,
             arms_angle,
         )
-        self.arms_nearly_extended_drawn_frames.append(frame)
+        self.arms_nearly_extended_drawn_frames.append(copy_frame_img)
         if drawn_all:
             draw_pullup_arms_nearly_extended(
                 frame_img,
@@ -397,7 +417,7 @@ class ExercisePullUp(BaseExercise):
         chin_over_bar = draw_pullup_chin_over_bar(
             copy_frame_img, left_index_finger, right_index_finger, left_mouth
         )
-        self.chin_over_bar_drawn_frames.append(frame)
+        self.chin_over_bar_drawn_frames.append(copy_frame_img)
         if drawn_all:
             draw_pullup_chin_over_bar(
                 frame_img, left_index_finger, right_index_finger, left_mouth
@@ -412,7 +432,7 @@ class ExercisePullUp(BaseExercise):
                 copy_frame_img, left_shoulder, left_ear, right_shoulder, right_ear
             )
         )
-        self.shoulder_engagement_drawn_frames.append(frame)
+        self.shoulder_engagement_drawn_frames.append(copy_frame_img)
         if drawn_all:
             draw_pullup_shoulder_engagement(
                 frame_img, left_shoulder, left_ear, right_shoulder, right_ear
@@ -434,7 +454,7 @@ class ExercisePullUp(BaseExercise):
         )
         print("########################")
 
-    def summarize_feedback(self) -> t.Dict[ExerciseMeasureEnum, ExerciseFeedback]:
+    def summarize_feedback(self) -> SummarizedFeedback:
         trheshold_frames_arms_nearly_extended = 3
         threshold_frames_chin_over_bar = 3
         threshold_frames_shoulder_engagement = 10
@@ -515,4 +535,7 @@ class ExercisePullUp(BaseExercise):
                 )
             )
 
-        return feedback, relevant_videos
+        return SummarizedFeedback(
+            feedback=feedback,
+            relevant_videos=relevant_videos,
+        )

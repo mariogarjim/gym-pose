@@ -1,29 +1,22 @@
+import io
+import json
+import logging
 import os
 import tempfile
-from typing import BinaryIO
-import logging
 import traceback
-import json
 
 import cv2
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
 import mediapipe as mp
+from app.api.api_v1.services import ExerciseFactory, Feedback, VideoService
 from app.enum import ExerciseEnum
-from app.api.api_v1.services import ExerciseFactory, Feedback
-from app.api.api_v1.services.draw import draw_landmarks
-
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
 
 router = APIRouter()
 
 # Create uploads directory if it doesn't exist
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-
-def iterfile(file_like: BinaryIO):
-    while chunk := file_like.read(8192):
-        yield chunk
 
 
 @router.post("/upload")
@@ -37,102 +30,76 @@ async def upload_video(
     Returns a StreamingResponse with the processed video and feedback in headers.
     """
     feedback_service = Feedback()
-    try:
-        # Validate file type
-        if not file.content_type.startswith("video/"):
-            raise HTTPException(status_code=400, detail="File must be a video")
+    video_service = VideoService()
+    exercise_strategy = ExerciseFactory.get_exercise_strategy(exercise_type)
+    mp_pose = mp.solutions.pose
 
-        # Temporal file to save the uploaded video
-        input_fd, input_path = tempfile.mkstemp(suffix=".mp4")
-        os.close(input_fd)
+    # Validate file type
+    if not file.content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="File must be a video")
 
-        with open(input_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
+    # Temporal file to save the uploaded video
+    input_fd, input_path = tempfile.mkstemp(suffix=".mp4")
+    os.close(input_fd)
 
-        # Temporal file to save the processed video
-        output_fd, output_path = tempfile.mkstemp(suffix=".mp4")
-        os.close(output_fd)
+    with open(input_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
 
-        cap = cv2.VideoCapture(input_path)
-        if not cap.isOpened():
-            raise HTTPException(status_code=400, detail="Failed to open uploaded video")
+    cap = cv2.VideoCapture(input_path)
+    if not cap.isOpened():
+        raise HTTPException(status_code=400, detail="Failed to open uploaded video")
 
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    exercise = exercise_strategy(total_frames)
 
-        # Exercise setup
-        exercise_strategy = ExerciseFactory.get_exercise_strategy(exercise_type)
-        exercise = exercise_strategy(total_frames)
+    with mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
+        frame_count = 0
 
-        # MediaPipe pose setup
-        mp_pose = mp.solutions.pose
-        mp_drawing = mp.solutions.drawing_utils
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        with mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
-            frame_count = 0
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            result = pose.process(rgb_frame)
+            landmarks = result.pose_landmarks
 
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
+            if landmarks:
+                exercise.evaluate_frame(
+                    frame_img=frame,
+                    frame=frame_count,
+                    landmarks=landmarks,
+                    drawn_all=drawn_all,
+                )
 
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                result = pose.process(rgb_frame)
-                landmarks = result.pose_landmarks
+            frame_count += 1
 
-                if landmarks:
-                    exercise.evaluate_frame(
-                        frame_img=frame,
-                        frame=frame_count,
-                        landmarks=landmarks,
-                        drawn_all=drawn_all,
-                    )
+    cap.release()
 
-                out.write(frame)
-                frame_count += 1
+    summarized_feedback = exercise.summarize_feedback()
+    exercise_feedback = summarized_feedback.feedback
+    relevant_videos = summarized_feedback.relevant_videos
 
-        cap.release()
-        out.release()
+    feedback_text = ""
+    # generated_feedback = feedback_service.generate_feedback(
+    #    feedback=exercise_feedback,
+    # )
+    feedback_json = json.dumps(feedback_text)
+    print("feedback_json_test ", feedback_json)
 
-        feedback, relevant_videos = exercise.summarize_feedback()
-        print("feedback_test: ", feedback)
-        print("relevant_videos: ", relevant_videos)
-        generated_feedback = ""
-        # generated_feedback = feedback_service.generate_feedback(
-        #    feedback=feedback,
-        # )
-
-        print("generated_feedback: ", generated_feedback)
-
-        # Convert feedback to JSON string
-        feedback_json = json.dumps(generated_feedback)
-
-        # Return processed video with feedback in headers
-        video_file = open(output_path, "rb")
-        return StreamingResponse(
-            iterfile(video_file),
-            media_type="video/mp4",
-            headers={
-                "Content-Disposition": f"attachment; filename=processed_{file.filename}",
-                "X-Exercise-Feedback": feedback_json,
-            },
-        )
-    except Exception as e:
-        logging.error(f"Error uploading video: {str(e)}")
-        logging.error(f"Traceback:\n{traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error processing video: {str(e)}",
-        )
-    finally:
-        # Cleanup temporary files
-        if "input_path" in locals() and os.path.exists(input_path):
-            os.remove(input_path)
-        if "output_path" in locals() and os.path.exists(output_path):
-            os.remove(output_path)
+    # Return processed video with feedback in headers
+    zip_buffer = video_service.process_relevant_videos(
+        relevant_videos=relevant_videos, fps=fps
+    )
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="processed_{file.filename}_response.zip"',
+            "X-Exercise-Feedback": feedback_json,
+            "clips_generated": str(len(relevant_videos.keys())),
+        },
+    )
