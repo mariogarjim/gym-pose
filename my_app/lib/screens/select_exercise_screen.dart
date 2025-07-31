@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:my_app/core/api/video_upload_service.dart';
+import 'package:my_app/screens/feedback_screen.dart';
 
 final exerciseType = {
   "Squats": "squat",
@@ -73,18 +74,19 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
     });
   });
 
-  
      final videoData = await VideoUploadService.uploadAndProcessVideo(
        videoPath: widget.videoPath,
        exerciseType: exerciseType[selectedExercise]!,
      );
-    log("Video uploaded: ${videoData.length} bytes");
+    log("Video uploaded: ${videoData.zipBytes.length} bytes");
+    log("Feedback: ${videoData.feedback}");
+    log("Clips generated: ${videoData.clipsGenerated}");
 
     // ✅ Upload complete — stop the timer and navigate
     timer?.cancel();
 
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/results');
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => FeedbackScreen(overallScore: 100)));
     }
   }
 
