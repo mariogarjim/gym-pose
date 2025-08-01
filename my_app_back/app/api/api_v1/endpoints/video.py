@@ -23,7 +23,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 async def upload_video(
     file: UploadFile = File(...),
     exercise_type: ExerciseEnum = Query(...),
-    drawn_all: bool = Query(False),
 ) -> StreamingResponse:
     """
     Upload and process a video file.
@@ -72,7 +71,6 @@ async def upload_video(
                     frame_img=frame,
                     frame=frame_count,
                     landmarks=landmarks,
-                    drawn_all=drawn_all,
                 )
 
             frame_count += 1
@@ -83,16 +81,16 @@ async def upload_video(
     exercise_feedback = summarized_feedback.feedback
     relevant_videos = summarized_feedback.relevant_videos
 
-    feedback_text = ""
-    # generated_feedback = feedback_service.generate_feedback(
-    #    feedback=exercise_feedback,
-    # )
-    feedback_json = json.dumps(feedback_text)
+    generated_feedback = feedback_service.generate_feedback(
+        feedback=exercise_feedback,
+    )
+    feedback_json = json.dumps(generated_feedback)
     print("feedback_json_test ", feedback_json)
 
     # Return processed video with feedback in headers
     zip_buffer = video_service.process_relevant_videos(
-        relevant_videos=relevant_videos, fps=fps
+        relevant_videos=relevant_videos,
+        fps=fps,
     )
     return StreamingResponse(
         zip_buffer,

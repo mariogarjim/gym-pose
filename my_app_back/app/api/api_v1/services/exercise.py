@@ -90,7 +90,6 @@ class BaseExercise:
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-        drawn_all: bool = False,
     ):
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -150,7 +149,6 @@ class ExerciseSquad(BaseExercise):
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-        drawn_all: bool = False,
     ):
         # Get landmark coordinates using landmark indices
         left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
@@ -173,8 +171,6 @@ class ExerciseSquad(BaseExercise):
         copy_frame_img = frame_img.copy()
         back_posture_angle = draw_back_posture(copy_frame_img, shoulder, hip, torso_vec)
         self.back_posture_drawn_frames.append(copy_frame_img)
-        if drawn_all:
-            draw_back_posture(frame_img, shoulder, hip, torso_vec)
         if back_posture_angle > 40:
             self.back_posture[frame] = 1
 
@@ -183,8 +179,6 @@ class ExerciseSquad(BaseExercise):
         copy_frame_img = frame_img.copy()
         draw_squad_depth(copy_frame_img, hip, knee, depth)
         self.deep_squad_drawn_frames.append(copy_frame_img)
-        if drawn_all:
-            draw_squad_depth(frame_img, hip, knee, depth)
         if depth > 0:
             self.deep_squad = True
 
@@ -194,8 +188,6 @@ class ExerciseSquad(BaseExercise):
         copy_frame_img = frame_img.copy()
         draw_head_alignment(copy_frame_img, ear, shoulder, max_offset)
         self.head_alignment_drawn_frames.append(copy_frame_img)
-        if drawn_all:
-            draw_head_alignment(frame_img, ear, shoulder, max_offset)
         if horizontal_offset > max_offset:
             self.head_alignment[frame] = 1
 
@@ -223,15 +215,12 @@ class ExerciseSquad(BaseExercise):
                 feedback=ExerciseFeedbackEnum.IMPROVABLE,
                 comment="The squat is not deep enough",
             )
-            relevant_videos[ExerciseMeasureEnum.SQUAT_DEPTH] = (
-                self.deep_squad_drawn_frames
-            )
         else:
             feedback[ExerciseMeasureEnum.SQUAT_DEPTH] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.OPTIMAL,
                 comment="The squat is deep enough",
             )
-
+        relevant_videos[ExerciseMeasureEnum.SQUAT_DEPTH] = self.deep_squad_drawn_frames
         print(
             "feedback[ExerciseMeasureEnum.SQUAT_DEPTH]: ",
             feedback[ExerciseMeasureEnum.SQUAT_DEPTH],
@@ -253,14 +242,14 @@ class ExerciseSquad(BaseExercise):
         )
         if squat_torso_angle_feedback:
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = squat_torso_angle_feedback
-            relevant_videos[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = (
-                self.back_posture_drawn_frames
-            )
         else:
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.OPTIMAL,
                 comment="The back posture is optimal",
             )
+        relevant_videos[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = (
+            self.back_posture_drawn_frames
+        )
 
         print(
             "feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE]: ",
@@ -282,15 +271,14 @@ class ExerciseSquad(BaseExercise):
 
         if head_alignment_feedback:
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT] = head_alignment_feedback
-            relevant_videos[ExerciseMeasureEnum.HEAD_ALIGNMENT] = (
-                self.head_alignment_drawn_frames
-            )
         else:
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.OPTIMAL,
                 comment="The head alignment is optimal",
             )
-
+        relevant_videos[ExerciseMeasureEnum.HEAD_ALIGNMENT] = (
+            self.head_alignment_drawn_frames
+        )
         print(
             "feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT]: ",
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT],
@@ -311,7 +299,6 @@ class ExerciseBenchPress(BaseExercise):
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-        drawn_all: bool = False,
     ):
         draw_landmarks(frame_img, landmarks)
 
@@ -346,7 +333,6 @@ class ExercisePullUp(BaseExercise):
         frame_img: np.ndarray,
         frame: int,
         landmarks: NormalizedLandmarkList,
-        drawn_all: bool = False,
     ):
         # Get landmark coordinates using landmark indices
         left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
@@ -403,14 +389,6 @@ class ExercisePullUp(BaseExercise):
             arms_angle,
         )
         self.arms_nearly_extended_drawn_frames.append(copy_frame_img)
-        if drawn_all:
-            draw_pullup_arms_nearly_extended(
-                frame_img,
-                left_shoulder,
-                left_elbow,
-                left_wrist,
-                arms_angle,
-            )
 
         ## Top (chin over bar)
         copy_frame_img = frame_img.copy()
@@ -418,10 +396,6 @@ class ExercisePullUp(BaseExercise):
             copy_frame_img, left_index_finger, right_index_finger, left_mouth
         )
         self.chin_over_bar_drawn_frames.append(copy_frame_img)
-        if drawn_all:
-            draw_pullup_chin_over_bar(
-                frame_img, left_index_finger, right_index_finger, left_mouth
-            )
         if chin_over_bar > 0:
             self.chin_over_bar[frame] = 1
 
@@ -433,11 +407,6 @@ class ExercisePullUp(BaseExercise):
             )
         )
         self.shoulder_engagement_drawn_frames.append(copy_frame_img)
-        if drawn_all:
-            draw_pullup_shoulder_engagement(
-                frame_img, left_shoulder, left_ear, right_shoulder, right_ear
-            )
-
         offset = 10
         threshold = int(0.05 * frame_img.shape[0]) + offset
         if (
@@ -474,12 +443,12 @@ class ExercisePullUp(BaseExercise):
                 comment="For the down phase, the arms are correctly extended",
             ),
         )
+        relevant_videos[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
+            self.arms_nearly_extended_drawn_frames
+        )
         if arms_nearly_extended_feedback:
             feedback[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
                 arms_nearly_extended_feedback
-            )
-            relevant_videos[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
-                self.arms_nearly_extended_drawn_frames
             )
         else:
             feedback[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
@@ -499,11 +468,11 @@ class ExercisePullUp(BaseExercise):
                 comment="For the up phase, the chin is correctly over the bar",
             ),
         )
+        relevant_videos[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = (
+            self.chin_over_bar_drawn_frames
+        )
         if chin_over_bar_feedback:
             feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = chin_over_bar_feedback
-            relevant_videos[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = (
-                self.chin_over_bar_drawn_frames
-            )
         else:
             feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.IMPROVABLE,
@@ -520,12 +489,12 @@ class ExercisePullUp(BaseExercise):
                 comment="The shoulders are not engaged throughout the movement. The shoulders remain inactive and unstable, contributing to improper form and injury prevention.",
             ),
         )
+        relevant_videos[ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT] = (
+            self.shoulder_engagement_drawn_frames
+        )
         if shoulder_engagement_feedback:
             feedback[ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT] = (
                 shoulder_engagement_feedback
-            )
-            relevant_videos[ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT] = (
-                self.shoulder_engagement_drawn_frames
             )
         else:
             feedback[ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT] = (

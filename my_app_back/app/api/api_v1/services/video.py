@@ -44,17 +44,19 @@ class VideoService:
         relevant_videos: dict[ExerciseMeasureEnum, list[np.ndarray]],
         fps: int,
     ) -> io.BytesIO:
-        if not relevant_videos:
-            return io.BytesIO()
-
         zip_buffer = None
         temp_video_paths = []
 
-        if relevant_videos:
-            for measure, frames in relevant_videos.items():
-                video_path = self._encode_frames_to_video(frames, fps, measure.value)
-                if video_path:
-                    temp_video_paths.append(video_path)
+        output_fd, output_path = tempfile.mkstemp(suffix=".mp4")
+        os.close(output_fd)
+        zip_buffer = self._create_zip_with_videos(
+            output_path=output_path, relevant_video_paths=temp_video_paths
+        )
+
+        for measure, frames in relevant_videos.items():
+            video_path = self._encode_frames_to_video(frames, fps, measure.value)
+            if video_path:
+                temp_video_paths.append(video_path)
 
             output_fd, output_path = tempfile.mkstemp(suffix=".mp4")
             os.close(output_fd)
