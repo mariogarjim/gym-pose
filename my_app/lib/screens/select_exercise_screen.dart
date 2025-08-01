@@ -63,10 +63,10 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
   });
 
   // Start simulated progress timer
-  timer = Timer.periodic(const Duration(milliseconds: 300), (timer) {
+  timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
     setState(() {
-      progress += 2;
       if (progress < 98) {
+         progress += 2;
         currentStep = (progress / 100 * analysisSteps.length)
               .floor()
               .clamp(0, analysisSteps.length - 1);
@@ -74,19 +74,19 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
     });
   });
 
-     final videoData = await VideoUploadService.uploadAndProcessVideo(
+     final videoResponse = await VideoUploadService.uploadAndProcessVideo(
        videoPath: widget.videoPath,
        exerciseType: exerciseType[selectedExercise]!,
      );
-    log("Video uploaded: ${videoData.zipBytes.length} bytes");
-    log("Feedback: ${videoData.feedback}");
-    log("Clips generated: ${videoData.clipsGenerated}");
+    log("Video uploaded: ${videoResponse.zipBytes.length} bytes");
+    log("Feedback: ${videoResponse.feedback}");
+    log("Clips generated: ${videoResponse.clipsGenerated}");
 
     // ✅ Upload complete — stop the timer and navigate
     timer?.cancel();
 
     if (mounted) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => FeedbackScreen(overallScore: 100)));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => FeedbackScreen(videoResponse: videoResponse)));
     }
   }
 

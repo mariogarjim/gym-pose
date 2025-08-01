@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:my_app/models/upload_video.dart';
 import 'package:video_player/video_player.dart';
 
 class FeedbackScreen extends StatelessWidget {
-  FeedbackScreen({super.key, required this.overallScore});
-  final int overallScore;
+  FeedbackScreen({super.key, required this.videoResponse});
+  final UploadVideoResult videoResponse;
 
   final List<Map<String, dynamic>> videos = [
     {
