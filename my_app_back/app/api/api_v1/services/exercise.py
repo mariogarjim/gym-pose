@@ -15,41 +15,33 @@ from app.api.api_v1.services.draw import (
 )
 
 
+class RelevantFeedbackWindow:
+    def __init__(
+        self,
+        from_frame: int,
+        to_frame: int,
+        number_of_relevant_frames: int,
+        comment: str = "",
+    ):
+        self.from_frame = from_frame
+        self.to_frame = to_frame
+        self.number_of_relevant_frames = number_of_relevant_frames
+        self.comment = comment
+
+
 class ExerciseFeedback:
     def __init__(
         self,
         feedback: ExerciseFeedbackEnum,
         comment: str = "",
+        relevant_windows: list[RelevantFeedbackWindow] = [],
     ):
         self.feedback = feedback.value
         self.comment = comment
+        self.relevant_windows = relevant_windows
 
     def __str__(self):
-        return f"ExerciseFeedback(feedback={self.feedback}, comment={self.comment})"
-
-    def __repr__(self):
-        return self.__str__()
-
-
-class RelevantFeedbackWindow:
-    def __init__(
-        self,
-        window: t.Dict[ExerciseMeasureEnum, ExerciseFeedback],
-        measure: ExerciseMeasureEnum,
-        from_frame: int,
-        to_frame: int,
-        number_of_relevant_frames: int,
-        exercise_feedback: ExerciseFeedback,
-    ):
-        self.window = window
-        self.measure = measure
-        self.from_frame = from_frame
-        self.to_frame = to_frame
-        self.number_of_relevant_frames = number_of_relevant_frames
-        self.exercise_feedback = exercise_feedback
-
-    def __str__(self):
-        return f"RelevantFeedbackWindow(measure={self.measure}, from_frame={self.from_frame}, to_frame={self.to_frame}, number_of_relevant_frames={self.number_of_relevant_frames})"
+        return f"ExerciseFeedback(feedback={self.feedback}, comment={self.comment}, relevant_windows={self.relevant_windows})"
 
     def __repr__(self):
         return self.__str__()
@@ -102,7 +94,7 @@ class BaseExercise:
         measure: ExerciseMeasureEnum,
         measure_feedback: t.List[int],
         window_threshold_frames: int,
-        exercise_feedback: ExerciseFeedback,
+        comment: str,
     ) -> t.List[RelevantFeedbackWindow]:
         relevant_windows = []
         for window_index in range(number_of_windows):
@@ -114,12 +106,10 @@ class BaseExercise:
             if relevant_frames >= window_threshold_frames:
                 relevant_windows.append(
                     RelevantFeedbackWindow(
-                        window=window,
-                        measure=measure.value,
                         from_frame=current_window_start,
                         to_frame=current_window_end,
                         number_of_relevant_frames=relevant_frames,
-                        exercise_feedback=exercise_feedback,
+                        comment=comment,
                     )
                 )
 
@@ -228,20 +218,19 @@ class ExerciseSquad(BaseExercise):
 
         number_of_windows = self.total_frames // self.window_size
 
-        exercise_feedback = ExerciseFeedback(
-            feedback=ExerciseFeedbackEnum.HARMFUL,
-            comment="Not straight back during the movement is harmful",
-        )
-
         squat_torso_angle_feedback = super().get_relevant_feedback_windows(
             number_of_windows=number_of_windows,
             measure=ExerciseMeasureEnum.SQUAT_TORSO_ANGLE,
             measure_feedback=self.back_posture,
             window_threshold_frames=self.window_threshold_frames,
-            exercise_feedback=exercise_feedback,
+            comment="Not straight back during the movement is harmful",
         )
         if squat_torso_angle_feedback:
-            feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = squat_torso_angle_feedback
+            feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.HARMFUL,
+                comment="Not straight back during the movement is harmful",
+                relevant_windows=squat_torso_angle_feedback,
+            )
         else:
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.OPTIMAL,
@@ -256,25 +245,24 @@ class ExerciseSquad(BaseExercise):
             feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE],
         )
 
-        exercise_feedback = ExerciseFeedback(
-            feedback=ExerciseFeedbackEnum.HARMFUL,
-            comment="Not aligned head with the spine is harmful.",
-        )
-
         head_alignment_feedback = super().get_relevant_feedback_windows(
             number_of_windows=number_of_windows,
             measure=ExerciseMeasureEnum.HEAD_ALIGNMENT,
             measure_feedback=self.head_alignment,
             window_threshold_frames=self.window_threshold_frames,
-            exercise_feedback=exercise_feedback,
+            comment="The head is not correctlyaligned with the spine during this video frames.",
         )
 
         if head_alignment_feedback:
-            feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT] = head_alignment_feedback
+            feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT] = ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.HARMFUL,
+                comment="Not aligned head with the spine is harmful.",
+                relevant_windows=head_alignment_feedback,
+            )
         else:
             feedback[ExerciseMeasureEnum.HEAD_ALIGNMENT] = ExerciseFeedback(
                 feedback=ExerciseFeedbackEnum.OPTIMAL,
-                comment="The head alignment is optimal",
+                comment="The head alignment with the spine is optimal",
             )
         relevant_videos[ExerciseMeasureEnum.HEAD_ALIGNMENT] = (
             self.head_alignment_drawn_frames
