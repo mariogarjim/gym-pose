@@ -5,7 +5,7 @@ from zipfile import ZipFile
 
 import cv2
 import numpy as np
-from app.enum import ExerciseMeasureEnum
+from app.enum import VideoFeedbackEnum
 
 
 class VideoService:
@@ -20,49 +20,34 @@ class VideoService:
         height, width, _ = frames[0].shape
         temp_fd, temp_path = tempfile.mkstemp(suffix=f"_{extra_name}.mp4")
         os.close(temp_fd)
+
         out = cv2.VideoWriter(
             temp_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
         )
+
         for frame in frames:
             out.write(frame)
         out.release()
+
         return temp_path
 
-    def _create_zip_with_videos(
-        self, output_path: str, relevant_video_paths: list[str]
-    ) -> io.BytesIO:
-        zip_buffer = io.BytesIO()
-        with ZipFile(zip_buffer, "w") as zip_archive:
-            zip_archive.write(output_path, arcname=os.path.basename(output_path))
-            for idx, path in enumerate(relevant_video_paths):
-                zip_archive.write(path, arcname=f"relevant_clip_{idx + 1}.mp4")
-        zip_buffer.seek(0)
-        return zip_buffer
-
-    def process_relevant_videos(
+    def process_videos(
         self,
-        relevant_videos: dict[ExerciseMeasureEnum, list[np.ndarray]],
+        videos: dict[VideoFeedbackEnum, list[np.ndarray]],
         fps: int,
     ) -> io.BytesIO:
-        zip_buffer = None
-        temp_video_paths = []
+        root_dir_name = "videos"
+        zip_buffer = io.BytesIO()
+        with ZipFile(zip_buffer, "w") as zip_archive:
+            for feedback, videos in videos.items():
+                for frames in videos:
+                    video_path = self._encode_frames_to_video(frames, fps, feedback)
+                    if video_path:
+                        arcname = os.path.join(
+                            root_dir_name, feedback.value, os.path.basename(video_path)
+                        )
+                    zip_archive.write(video_path, arcname=arcname)
+                    os.remove(video_path)  # Cleanup temp video file
 
-        output_fd, output_path = tempfile.mkstemp(suffix=".mp4")
-        os.close(output_fd)
-        zip_buffer = self._create_zip_with_videos(
-            output_path=output_path, relevant_video_paths=temp_video_paths
-        )
-
-        for measure, frames in relevant_videos.items():
-            video_path = self._encode_frames_to_video(frames, fps, measure.value)
-            if video_path:
-                temp_video_paths.append(video_path)
-
-            output_fd, output_path = tempfile.mkstemp(suffix=".mp4")
-            os.close(output_fd)
-            zip_buffer = self._create_zip_with_videos(
-                output_path=output_path, relevant_video_paths=temp_video_paths
-            )
-            zip_buffer.seek(0)
-
+        zip_buffer.seek(0)
         return zip_buffer

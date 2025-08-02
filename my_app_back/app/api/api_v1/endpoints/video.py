@@ -8,7 +8,7 @@ import traceback
 import cv2
 import mediapipe as mp
 from app.api.api_v1.services import ExerciseFactory, Feedback, VideoService
-from app.enum import ExerciseEnum
+from app.enum import ExerciseEnum, VideoFeedbackEnum
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
@@ -79,17 +79,29 @@ async def upload_video(
 
     summarized_feedback = exercise.summarize_feedback()
     exercise_feedback = summarized_feedback.feedback
-    relevant_videos = summarized_feedback.relevant_videos
+    videos = summarized_feedback.videos
+    positive_feedback = summarized_feedback.positive_feedback
+    improvement_feedback = summarized_feedback.improvement_feedback
+    negative_feedback = summarized_feedback.negative_feedback
 
-    generated_feedback = feedback_service.generate_feedback(
-        feedback=exercise_feedback,
-    )
-    feedback_json = json.dumps(generated_feedback)
-    print("feedback_json_test ", feedback_json)
+    videos_feedback = {
+        VideoFeedbackEnum.POSITIVE: [],
+        VideoFeedbackEnum.IMPROVEMENT: [],
+        VideoFeedbackEnum.NEGATIVE: [],
+    }
+
+    print("videos_feedback", videos_feedback)
+
+    for feedback in positive_feedback:
+        videos_feedback[VideoFeedbackEnum.POSITIVE].append(videos[feedback])
+    for feedback in improvement_feedback:
+        videos_feedback[VideoFeedbackEnum.IMPROVEMENT].append(videos[feedback])
+    for feedback in negative_feedback:
+        videos_feedback[VideoFeedbackEnum.NEGATIVE].append(videos[feedback])
 
     # Return processed video with feedback in headers
-    zip_buffer = video_service.process_relevant_videos(
-        relevant_videos=relevant_videos,
+    zip_buffer = video_service.process_videos(
+        videos=videos_feedback,
         fps=fps,
     )
     return StreamingResponse(
@@ -97,7 +109,7 @@ async def upload_video(
         media_type="application/zip",
         headers={
             "Content-Disposition": f'attachment; filename="processed_{file.filename}_response.zip"',
-            "X-Exercise-Feedback": feedback_json,
-            "clips_generated": str(len(relevant_videos.keys())),
+            "X-Exercise-Feedback": "",
+            "clips_generated": str(len(videos_feedback.keys())),
         },
     )

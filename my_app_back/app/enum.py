@@ -29,3 +29,12 @@ class ExerciseFeedbackEnum(Enum):
 
     def __str__(self):
         return self.value
+
+
+class VideoFeedbackEnum(Enum):
+    POSITIVE = "positive"
+    IMPROVEMENT = "improvement"
+    NEGATIVE = "negative"
+
+    def __str__(self):
+        return self.value
