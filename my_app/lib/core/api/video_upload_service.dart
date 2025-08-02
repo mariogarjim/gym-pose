@@ -3,6 +3,11 @@
 import 'package:http/http.dart' as http;
 import 'package:my_app/core/utils/mime_utils.dart';
 import 'package:my_app/models/upload_video.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:archive/archive.dart';
 
 class VideoUploadService {
   
@@ -13,7 +18,6 @@ class VideoUploadService {
       'exercise_type': exerciseType,
     });
 
-    
     final request = http.MultipartRequest('POST', uri);
 
     final multipartFile = await http.MultipartFile.fromPath(
@@ -33,14 +37,36 @@ class VideoUploadService {
 
     final feedback = response.headers['x-exercise-feedback'];
     final clipsGenerated = response.headers['x-clips-generated'];
-
+    final zipBytes = response.bodyBytes;
+    final extractedDirectory = await _extractZip(zipBytes);
 
     final int clipsGeneratedInt = int.parse(clipsGenerated ?? '0');
 
     return UploadVideoResult(
-      zipBytes: response.bodyBytes,
+      zipBytes: zipBytes,
       feedback: feedback ?? '',
       clipsGenerated: clipsGeneratedInt,
+      extractedDirectory: extractedDirectory,
     );
+  }
+
+  static Future<Directory> _extractZip(Uint8List zipBytes) async {
+    final archive = ZipDecoder().decodeBytes(zipBytes);
+
+    final appDocDir = await getApplicationDocumentsDirectory();
+    final outputDir = Directory(path.join(appDocDir.path, "unzipped_videos_${DateTime.now().millisecondsSinceEpoch}"));
+    outputDir.createSync(recursive: true);
+
+    for (final file in archive) {
+      final filePath = path.join(outputDir.path, file.name);
+
+      if (file.isFile) {
+        final outFile = File(filePath);
+        await outFile.create(recursive: true);
+        await outFile.writeAsBytes(file.content as List<int>);
+      }
+    }
+
+    return outputDir;
   }
 }

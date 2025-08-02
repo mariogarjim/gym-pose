@@ -52,42 +52,42 @@ class _SelectExerciseScreenState extends State<SelectExerciseScreen> {
   ];
 
   void startAnalysis() async {
-  if (selectedExercise == null) return;
+    if (selectedExercise == null) return;
 
-  log("Selected exercise: $selectedExercise");
+    log("Selected exercise: $selectedExercise");
 
-  setState(() {
-    isAnalyzing = true;
-    progress = 0;
-    currentStep = 0;
-  });
-
-  // Start simulated progress timer
-  timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
     setState(() {
-      if (progress < 98) {
-         progress += 2;
-        currentStep = (progress / 100 * analysisSteps.length)
-              .floor()
-              .clamp(0, analysisSteps.length - 1);
-        }
+      isAnalyzing = true;
+      progress = 0;
+      currentStep = 0;
     });
-  });
 
-     final videoResponse = await VideoUploadService.uploadAndProcessVideo(
-       videoPath: widget.videoPath,
-       exerciseType: exerciseType[selectedExercise]!,
-     );
-    log("Video uploaded: ${videoResponse.zipBytes.length} bytes");
-    log("Feedback: ${videoResponse.feedback}");
-    log("Clips generated: ${videoResponse.clipsGenerated}");
+    // Start simulated progress timer
+    timer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      setState(() {
+        if (progress < 98) {
+          progress += 2;
+          currentStep = (progress / 100 * analysisSteps.length)
+                .floor()
+                .clamp(0, analysisSteps.length - 1);
+          }
+      });
+    });
 
-    // ✅ Upload complete — stop the timer and navigate
-    timer?.cancel();
+      final videoResponse = await VideoUploadService.uploadAndProcessVideo(
+        videoPath: widget.videoPath,
+        exerciseType: exerciseType[selectedExercise]!,
+      );
+      log("Video uploaded: ${videoResponse.zipBytes.length} bytes");
+      log("Feedback: ${videoResponse.feedback}");
+      log("Clips generated: ${videoResponse.clipsGenerated}");
 
-    if (mounted) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => FeedbackScreen(videoResponse: videoResponse)));
-    }
+      // ✅ Upload complete — stop the timer and navigate
+      timer?.cancel();
+
+      if (mounted) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => FeedbackScreen(videoResponse: videoResponse)));
+      }
   }
 
   @override

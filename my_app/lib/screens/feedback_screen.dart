@@ -1,56 +1,69 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import 'package:my_app/models/upload_video.dart';
 import 'package:video_player/video_player.dart';
+import 'package:path/path.dart' as path;
 
-class FeedbackScreen extends StatelessWidget {
-  FeedbackScreen({super.key, required this.videoResponse});
+class FeedbackScreen extends StatefulWidget {
+  const FeedbackScreen({super.key, required this.videoResponse});
   final UploadVideoResult videoResponse;
 
-  final List<Map<String, dynamic>> videos = [
-    {
-      "type": "good",
-      "title": "What You Did Well",
-      "videoPath": "assets/videos/squat_10.mp4",
-      "feedback": [
-        "Good depth in the squat movement",
-        "Knees properly aligned with toes",
-        "Maintained neutral spine throughout"
-      ],
-      "timestamp": "0:15"
-    },
-    {
-      "type": "improvement",
-      "title": "Area for Improvement",
-      "videoPath": "assets/videos/squat_10.mp4",
-      "feedback": [
-        "Weight distribution slightly forward",
-        "Focus on keeping weight centered over mid-foot"
-      ],
-      "severity": "medium",
-      "timestamp": "0:08"
-    },
-    {
-      "type": "improvement",
-      "title": "Critical Fix Needed",
-      "videoPath": "assets/videos/squat_10.mp4",
-      "feedback": [
-        "Slight knee cave on ascent",
-        "Engage glutes more actively during upward movement"
-      ],
+  @override
+  State<FeedbackScreen> createState() => _FeedbackScreenState();
+}
+
+
+class _FeedbackScreenState extends State<FeedbackScreen> {
+  List<Map<String, dynamic>> videos = [];
+  int overallScore = 85;
+  Map<String, dynamic> _createVideoData(String type, String title, String videoPath, List<String> feedback) {
+    return {
+      "type": type,
+      "title": title,
+      "videoPath": videoPath,
+      "feedback": feedback,
       "severity": "high",
-      "timestamp": "0:12"
-    },
-    {
-      "type": "demonstration",
-      "title": "Perfect Form Example",
-      "videoPath": "assets/videos/squat_10.mp4",
-      "feedback": [
-        "This is how it should look",
-        "Notice the controlled movement and proper alignment"
-      ],
-      "timestamp": "0:20"
+      "timestamp": "0:00" 
+    };
+  }
+
+  void _getFeedback() {
+    final extractedDirectory = widget.videoResponse.extractedDirectory;
+    final Directory videosDir = Directory(path.join(extractedDirectory.path, "videos"));
+
+    final List<Directory> feedbackDirs = videosDir
+    .listSync(recursive: false)
+    .whereType<Directory>()
+    .toList();
+
+    final List<Map<String, dynamic>> newVideos = [];
+
+    for (final dir in feedbackDirs) {
+
+      final List<FileSystemEntity> videoFiles = dir.listSync(recursive: false)
+      .whereType<File>()
+      .toList();
+
+      for (final file in videoFiles) {
+        final String type = dir.path.split('/').last.split('_').first;
+        final String title = file.path.split('/').last.split('.').first;
+        final String videoPath = file.path;
+        const List<String> feedback = [];
+        final videoData = _createVideoData(type, title, videoPath, feedback);
+        newVideos.add(videoData);
+      }
     }
-  ];
+    setState(() {
+      overallScore = 85;
+      videos = newVideos;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getFeedback();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +155,7 @@ class _VideoCardState extends State<_VideoCard> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset(widget.data['videoPath'])
+    _controller = VideoPlayerController.file(File(widget.data['videoPath']))
       ..initialize().then((_) {
         setState(() {});
         _controller.setLooping(true);
@@ -161,7 +174,7 @@ class _VideoCardState extends State<_VideoCard> {
     Color color;
 
     switch (type) {
-      case "good":
+      case "positive":
         icon = const Icon(Icons.check_circle, size: 16, color: Colors.green);
         color = Colors.green;
         break;
@@ -169,7 +182,7 @@ class _VideoCardState extends State<_VideoCard> {
         icon = const Icon(Icons.warning, size: 16, color: Colors.orange);
         color = severity == "high" ? Colors.red : Colors.orange;
         break;
-      case "demonstration":
+      case "negative":
         icon = const Icon(Icons.play_arrow, size: 16, color: Colors.blue);
         color = Colors.blue;
         break;
@@ -181,7 +194,7 @@ class _VideoCardState extends State<_VideoCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -250,8 +263,8 @@ class _VideoCardState extends State<_VideoCard> {
                   child: Row(
                     children: [
                       Icon(
-                        data['type'] == 'good' ? Icons.check : Icons.warning,
-                        color: data['type'] == 'good' ? Colors.green : Colors.orange,
+                        data['type'] == 'positive' ? Icons.check : Icons.warning,
+                        color: data['type'] == 'positive' ? Colors.green : Colors.orange,
                         size: 16,
                       ),
                       const SizedBox(width: 8),
