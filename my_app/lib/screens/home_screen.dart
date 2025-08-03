@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../screens/select_exercise_screen.dart';
+import 'configure_analysis_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
         if (mounted) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => SelectExerciseScreen(videoPath: tempFilePath)),
+            MaterialPageRoute(builder: (context) => const ConfigureAnalysisScreen()),
           );
         }
         
