@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:my_app/core/api/video_upload_service.dart';
 import 'package:my_app/screens/feedback_screen.dart';
+import 'package:my_app/widgets/animated_image_switcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -27,6 +28,21 @@ final requiredVideos = {
   ],
 };
 
+final exercises = [
+    {"name": "Squats", "description": "Lower body strength exercise", "images": ["assets/images/squat1.png", "assets/images/squat2.png"]},
+    {"name": "Pull-ups", "description": "Upper body pulling exercise", "images": ["assets/images/pull-up1.png", "assets/images/pull-up2.png"]},
+    {"name": "Bench Press", "description": "Upper body pushing exercise", "images": ["assets/images/bench-press.png"]},
+  ];
+
+  final analysisSteps = [
+    "Uploading video...",
+    "Detecting movement patterns...",
+    "Analyzing form and technique...",
+    "Comparing to optimal form...",
+    "Generating personalized feedback...",
+    "Preparing demonstration videos..."
+  ];
+
 class ConfigureAnalysisScreen extends StatefulWidget {
   const ConfigureAnalysisScreen({super.key});
 
@@ -46,21 +62,6 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
   double progress = 0;
   int currentStep = 0;
   Timer? timer;
-
-  final exercises = [
-    {"name": "Squats", "description": "Lower body strength exercise", "image": "assets/images/squat.png"},
-    {"name": "Pull-ups", "description": "Upper body pulling exercise", "image": "assets/images/pull-up.png"},
-    {"name": "Bench Press", "description": "Upper body pushing exercise", "image": "assets/images/bench-press.png"},
-  ];
-
-  final analysisSteps = [
-    "Uploading video...",
-    "Detecting movement patterns...",
-    "Analyzing form and technique...",
-    "Comparing to optimal form...",
-    "Generating personalized feedback...",
-    "Preparing demonstration videos..."
-  ];
 
   //handle permission request on init
   Future<void> _handlePermissionRequest() async {
@@ -197,24 +198,15 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
   // Default: Exercise Selection
     return Scaffold(
     appBar: AppBar(
-      title: const Text("Select Exercise"),
-      leading: Icon(Icons.home, size: 30, color: Theme.of(context).colorScheme.primary),
+      leading: Icon(Icons.sports_gymnastics, size: 30, color: Theme.of(context).colorScheme.primary),
+      title: const Text(
+            "Choose the exercise",
+          ),
     ),
     body: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Text(
-            "Choose the exercise you want to analyze",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w400, // normal weight
-              color: Colors.grey[700]!, // soft neutral tone
-              letterSpacing: 0.5, // slight spacing for clean look
-              height: 1.4, // line height for readability
-            ),
-          ),
           const SizedBox(height: 32),
           Expanded(
             child: GridView.builder(
@@ -230,7 +222,7 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
                 final isSelected = selectedExercise == exercise['name'];
 
                 return GestureDetector(
-                  onTap: () => handleSelectExercise(exercise['name']!),
+                  onTap: () => handleSelectExercise(exercise['name'] as String),
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
@@ -255,33 +247,13 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
                         Expanded(
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                            child: Image.asset(
-                              exercise['image']!,
-                              fit: BoxFit.cover,
+                            child: AnimatedImageSwitcher(
+                              exerciseName: exercise['name'] as String,
+                              isSelected: isSelected,
+                              exerciseImages: exercise['images'] as List<String>,
                             ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  exercise['name']!,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              if (isSelected)
-                                Icon(
-                                  Icons.check_circle,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                            ],
-                          ),
-                        ),
+                        )
                       ],
                     ),
                   ),
