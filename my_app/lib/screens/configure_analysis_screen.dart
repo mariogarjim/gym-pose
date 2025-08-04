@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:my_app/core/api/video_upload_service.dart';
 import 'package:my_app/screens/feedback_screen.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 final exerciseType = {
   "Squats": "squat",
@@ -61,6 +62,21 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
     "Preparing demonstration videos..."
   ];
 
+  //handle permission request on init
+  Future<void> _handlePermissionRequest() async {
+    final videoPermissions = await Permission.videos.isGranted;
+    final imagePermissions = await Permission.photos.isGranted;
+    if (!videoPermissions || !imagePermissions) {
+      await Permission.videos.request();
+      await Permission.photos.request();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _handlePermissionRequest();
+  }
 
   void handleSelectExercise(String name) {
     setState(() {
@@ -182,10 +198,7 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
   return Scaffold(
     appBar: AppBar(
       title: const Text("Select Exercise"),
-      leading: IconButton(
-        icon: const Icon(Icons.chevron_left, size: 30),
-        onPressed: () => Navigator.pop(context),
-      ),
+      leading: Icon(Icons.home, size: 30, color: Theme.of(context).colorScheme.primary),
     ),
     body: Padding(
       padding: const EdgeInsets.all(16),
@@ -273,6 +286,7 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
   Widget _buildUploadScreen(
     String selectedExercise,
   ) {
+
   final requirements = requiredVideos[selectedExercise]!;
 
   return Padding(
