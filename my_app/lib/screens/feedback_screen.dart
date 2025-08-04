@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:my_app/models/upload_video.dart';
+import 'package:my_app/screens/configure_analysis_screen.dart';
 import 'package:video_player/video_player.dart';
 import 'package:path/path.dart' as path;
 
@@ -69,13 +70,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FormCheck'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {},
-          )
-        ],
+        title: const Text('FormCheck')
       ),
       body: Column(
         children: [
@@ -119,10 +114,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const ConfigureAnalysisScreen()));
                 },
-                icon: const Icon(Icons.replay),
-                label: const Text("New Analysis"),
+                icon: const Icon(Icons.replay, color: Colors.white),
+                label: const Text("New Analysis", style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ),
             const SizedBox(width: 10),
