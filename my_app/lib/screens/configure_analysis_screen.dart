@@ -199,14 +199,31 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
     return Scaffold(
     appBar: AppBar(
       leading: Icon(Icons.sports_gymnastics, size: 30, color: Theme.of(context).colorScheme.primary),
-      title: const Text(
-            "Choose the exercise",
+      title: Text(
+            "Exercise selection",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
+              letterSpacing: 0.5,
+              height: 1.3,
+            ),
           ),
     ),
     body: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          Text(
+            "Choose the exercise you want to analyze",
+            style: TextStyle(
+            fontSize: 20, // smaller than title
+            fontWeight: FontWeight.w400, // normal weight
+            color: Colors.grey[600], // softer than title
+            letterSpacing: 0.25, // slight spacing for readability
+            height: 1.5, // comfortable line height
+          ),
+          ),
           const SizedBox(height: 32),
           Expanded(
             child: GridView.builder(
