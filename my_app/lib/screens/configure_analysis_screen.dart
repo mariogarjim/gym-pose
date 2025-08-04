@@ -48,9 +48,9 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
   Timer? timer;
 
   final exercises = [
-    {"name": "Squats", "description": "Lower body strength exercise"},
-    {"name": "Pull-ups", "description": "Upper body pulling exercise"},
-    {"name": "Bench Press", "description": "Upper body pushing exercise"},
+    {"name": "Squats", "description": "Lower body strength exercise", "image": "assets/images/squat.png"},
+    {"name": "Pull-ups", "description": "Upper body pulling exercise", "image": "assets/images/pull-up.png"},
+    {"name": "Bench Press", "description": "Upper body pushing exercise", "image": "assets/images/bench-press.png"},
   ];
 
   final analysisSteps = [
@@ -195,7 +195,7 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
   }
 
   // Default: Exercise Selection
-  return Scaffold(
+    return Scaffold(
     appBar: AppBar(
       title: const Text("Select Exercise"),
       leading: Icon(Icons.home, size: 30, color: Theme.of(context).colorScheme.primary),
@@ -204,76 +204,89 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          const Text(
+          Text(
             "Choose the exercise you want to analyze",
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w400, // normal weight
+              color: Colors.grey[700]!, // soft neutral tone
+              letterSpacing: 0.5, // slight spacing for clean look
+              height: 1.4, // line height for readability
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 32),
           Expanded(
-            child: ListView.builder(
+            child: GridView.builder(
               itemCount: exercises.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 3 / 4,
+              ),
               itemBuilder: (context, index) {
                 final exercise = exercises[index];
-                final isSelected = selectedExercise == exercise["name"];
+                final isSelected = selectedExercise == exercise['name'];
 
                 return GestureDetector(
-                  onTap: () => setState(() {
-                    selectedExercise = exercise["name"];
-                  }),
-                  child: Card(
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(
+                  onTap: () => handleSelectExercise(exercise['name']!),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
-                            : Colors.grey[300]!,
+                            : Colors.grey.shade300,
                         width: 2,
                       ),
-                      borderRadius: BorderRadius.circular(8),
+                      color: isSelected ? Colors.blue[50] : Colors.white,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    color: isSelected ? Colors.blue[50] : null,
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: ListTile(
-                      title: Text(
-                        exercise["name"]!,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(exercise["description"]!),
-                      trailing: isSelected
-                          ? Icon(Icons.check_circle,
-                              color: Theme.of(context).colorScheme.primary)
-                          : null,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                            child: Image.asset(
+                              exercise['image']!,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  exercise['name']!,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              if (isSelected)
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
               },
-            ),
-          ),
-          SizedBox(
-            width: double.infinity,
-            height: 60,
-            child: ElevatedButton.icon(
-              onPressed: selectedExercise != null ? 
-              () => setState(() => showUploadScreen = true) : 
-              () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Please select an exercise to continue"),
-                  backgroundColor: Colors.red,
-                  duration: Duration(seconds: 1),
-                ),
-              ),
-              icon: Icon(Icons.account_tree_sharp, size: 20, color: selectedExercise != null ? Colors.white : Colors.black),
-              label: Text(
-                "Continue to analyze",
-                style: TextStyle(color: selectedExercise != null ? Colors.white : Colors.black),
-              ),
-              style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  backgroundColor: selectedExercise != null ? Theme.of(context).colorScheme.primary : Colors.grey[300],
-              ),
             ),
           ),
         ],
