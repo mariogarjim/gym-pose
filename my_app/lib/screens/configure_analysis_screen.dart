@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:my_app/theme/text_styles.dart';
 import 'package:my_app/core/api/video_upload_service.dart';
 import 'package:my_app/screens/feedback_screen.dart';
 import 'package:my_app/widgets/animated_image_switcher.dart';
@@ -89,6 +90,21 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
     });
   }
 
+  void _pickVideo(String reqId) async {
+    final picker = ImagePicker();
+    final picked = await picker.pickVideo(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() => uploadedVideos[reqId] = picked);
+      if (uploadedVideos.values.where((v) => v != null).length == requiredVideos[selectedExercise]!.length) {
+        log("Correct number of videos: ${uploadedVideos.length}");
+        log("Correct number of videos: $uploadedVideos");
+
+        log("Required number of videos: ${requiredVideos[selectedExercise]!.length}");
+        setState(() => isCorrectNumberOfVideos = true);
+      }
+    }
+  }
+
   void startAnalysis(List<String> videoPaths) async {
 
     log("Selected exercise: $selectedExercise");
@@ -145,7 +161,7 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
             icon: const Icon(Icons.chevron_left),
             onPressed: () => setState(() => showUploadScreen = false),
           ),
-          title: Text("Upload your ${selectedExercise!.toLowerCase()} videos")
+          title: Text("Upload your videos", style: AppTextStyles.screenTitle),
         ),
         body: _buildUploadScreen(
           selectedExercise!,
@@ -199,30 +215,18 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
     return Scaffold(
     appBar: AppBar(
       leading: Icon(Icons.sports_gymnastics, size: 30, color: Theme.of(context).colorScheme.primary),
-      title: Text(
-            "Exercise selection",
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[800],
-              letterSpacing: 0.5,
-              height: 1.3,
+                  title: Text(
+              "Exercise selection",
+              style: AppTextStyles.screenTitle,
             ),
-          ),
-    ),
+      ),
     body: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Text(
             "Choose the exercise you want to analyze",
-            style: TextStyle(
-            fontSize: 20, // smaller than title
-            fontWeight: FontWeight.w400, // normal weight
-            color: Colors.grey[600], // softer than title
-            letterSpacing: 0.25, // slight spacing for readability
-            height: 1.5, // comfortable line height
-          ),
+                        style: AppTextStyles.screenSubtitle,
           ),
           const SizedBox(height: 32),
           Expanded(
@@ -296,10 +300,10 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-            "We need specific camera angles to analyze your form accurately.",
+        Text(
+            "We need specific camera angles to analyze your form accurately",
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            style: AppTextStyles.screenSubtitle,
         ),
         const SizedBox(height: 24),
 
@@ -312,102 +316,111 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
               final uploadedFile = uploadedVideos[req['id']];
 
               return Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 3,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 margin: const EdgeInsets.symmetric(vertical: 8),
+                color: Colors.white,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.camera_alt_outlined, color: Colors.blue),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(req['label']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                Text(req['description']!, style: const TextStyle(color: Colors.grey)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
                       uploadedFile != null
                           ? Container(
-                              padding: const EdgeInsets.all(12),
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               decoration: BoxDecoration(
-                                color: Colors.green.withValues(alpha: 0.1),
-                                border: Border.all(color: Colors.green),
-                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white),
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Row(
+                              child: Column(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.check_circle, color: Colors.green),
-                                      const SizedBox(width: 8),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                    const CircleAvatar(
+                                        radius: 30,
+                                        backgroundColor: AppTextStyles.lightGreen,
+                                        child: Icon(
+                                          Icons.cloud_done_outlined,
+                                          size: 30,
+                                          color: AppTextStyles.darkGreen,
+                                        ),
+                                      ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      req['label']!,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      req['description']!,
+                                      style: const TextStyle(color: Colors.grey, fontSize: 16),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: () => setState(() {
+                                        uploadedVideos[req['id']!] = null;
+                                        isCorrectNumberOfVideos = false;
+                                      }),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppTextStyles.lightRed,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Text(
-                                            uploadedFile.name.length > 20 ? "${uploadedFile.name.substring(0, 20)}..." : uploadedFile.name,
-                                            style: const TextStyle(
-                                              color: Colors.green,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const Text(
-                                            "Video uploaded successfully",
-                                            style: TextStyle(color: Colors.green),
-                                          ),
+                                          Icon(Icons.delete_outline, size: 20, color: AppTextStyles.darkRed),
+                                          Text("  Remove Video", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTextStyles.darkRed)),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close, color: Colors.red),
-                                    onPressed: () => setState(() => uploadedVideos[req['id']!] = null),
-                                  ),
+                                    )
+                                  
+  
                                 ],
                               ),
                             )
                           : GestureDetector(
-                              onTap: () async {
-                                final picker = ImagePicker();
-                                final picked = await picker.pickVideo(source: ImageSource.gallery);
-                                if (picked != null) {
-                                  setState(() => uploadedVideos[req['id']!] = picked);
-                                  if (uploadedVideos.length == requiredVideos[selectedExercise]!.length) {
-                                    setState(() => isCorrectNumberOfVideos = true);
-                                  }
-                                }
-                              },
+                              onTap: () => _pickVideo(req['id']!),
                               child: Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 24),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey.shade400),
+                                  border: Border.all(color: Colors.white),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Column(
+                                child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.videocam, size: 36, color: Colors.grey),
-                                    SizedBox(height: 8),
+                                    const CircleAvatar(
+                                        radius: 30,
+                                        backgroundColor: AppTextStyles.beigeColor,
+                                        child: Icon(
+                                          Icons.camera_alt_outlined,
+                                          size: 30,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    const SizedBox(height: 8),
                                     Text(
-                                      "Click to upload video",
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                      req['label']!,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                                     ),
-                                    SizedBox(height: 4),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      "MP4, MOV, or AVI files accepted",
-                                      style: TextStyle(color: Colors.grey),
+                                      req['description']!,
+                                      style: const TextStyle(color: Colors.grey, fontSize: 16),
                                     ),
+                                    const SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: () => _pickVideo(req['id']!),
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.file_upload_outlined, size: 20),
+                                          Text("  Upload Video", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    )
                                   ],
                                 ),
                               ),
@@ -420,17 +433,16 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
           ),
         ),
 
-        const SizedBox(height: 16),
         ElevatedButton.icon(
           onPressed: isCorrectNumberOfVideos ? () => startAnalysis(uploadedVideos.values.map((v) => v!.path).toList()) : null,
-          icon: Icon(Icons.check, size: 20, color: isCorrectNumberOfVideos ? Colors.white : Colors.grey),
-          label: Text("Analyze My Form", style: TextStyle(color: isCorrectNumberOfVideos ? Colors.white : Colors.grey)),
+          icon: Icon(Icons.check, size: 20, color: isCorrectNumberOfVideos ? AppTextStyles.lightBlue :  Colors.grey),
+          label: Text("Continue", style: TextStyle(fontSize: 16, color: isCorrectNumberOfVideos ? AppTextStyles.lightBlue : Colors.grey)),
            style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 18),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
-                backgroundColor: isCorrectNumberOfVideos ? Theme.of(context).colorScheme.primary : Colors.grey[300],
+                backgroundColor: isCorrectNumberOfVideos ? AppTextStyles.mediumBlue : AppTextStyles.mediumBlue,
               ),
         ),
       ],
