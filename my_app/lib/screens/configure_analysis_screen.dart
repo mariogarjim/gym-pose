@@ -346,13 +346,13 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
                                       ),
                                     const SizedBox(height: 8),
                                     Text(
-                                      req['label']!,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                                      uploadedFile.name.length > 20 ? "${uploadedFile.name.substring(0, 20)}..." : uploadedFile.name,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTextStyles.darkGreen),
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(
-                                      req['description']!,
-                                      style: const TextStyle(color: Colors.grey, fontSize: 16),
+                                    const Text(
+                                      "Video uploaded successfully",
+                                      style: TextStyle(color: Colors.grey, fontSize: 16),
                                     ),
                                     const SizedBox(height: 16),
                                     ElevatedButton(
