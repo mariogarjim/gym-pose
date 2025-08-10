@@ -6,6 +6,8 @@ MediaType getMimeType(String filePath) {
   switch (ext) {
     case '.mp4':
       return MediaType('video', 'mp4');
+    case '.mov':
+      return MediaType('video', 'mp4');
     default:
       throw Exception('Unsupported file extension: $ext');
   }
