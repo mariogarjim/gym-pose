@@ -92,7 +92,7 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
 
   void _pickVideo(String reqId) async {
     final picker = ImagePicker();
-    final picked = await picker.pickVideo(source: ImageSource.gallery);
+    final picked = await picker.pickVideo(source: ImageSource.gallery, maxDuration: const Duration(seconds: 60));
     if (picked != null) {
       setState(() => uploadedVideos[reqId] = picked);
       if (uploadedVideos.values.where((v) => v != null).length == requiredVideos[selectedExercise]!.length) {
