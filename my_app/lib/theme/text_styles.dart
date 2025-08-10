@@ -9,6 +9,17 @@ class AppTextStyles {
     height: 1.3,
   );
 
+
+  static TextStyle get screenSubtitleBlack => TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    color: Colors.grey[900],
+    letterSpacing: 0.25,
+    height: 1.5,
+  );
+
+
+
   static TextStyle get screenSubtitle => TextStyle(
     fontSize: 20,
     fontWeight: FontWeight.w400,
@@ -16,6 +27,23 @@ class AppTextStyles {
     letterSpacing: 0.25,
     height: 1.5,
   );
+
+  static TextStyle get screenSubSubtitle => TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w400,
+    color: Colors.grey[600],
+    letterSpacing: 0.25,
+    height: 1.5,
+  );
+
+  static const TextStyle screenText = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w400,
+    color: Colors.black,
+    letterSpacing: 0.25,
+    height: 1.5,
+  );
+
 
   static const Color beigeColor = Color.fromARGB(255, 246, 240, 228);
 
