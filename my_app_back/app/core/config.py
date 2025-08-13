@@ -6,10 +6,11 @@ from functools import lru_cache
 class Settings(BaseSettings):
     PROJECT_NAME: str = "FastAPI Backend"
     API_V1_STR: str = "/api/v1"
+    API_V2_STR: str = "/api/v2"
     DEBUG: bool = True  # Enable debug mode by default in development
 
     # OpenAI
-    OPENAI_API_KEY: str
+    OPENAI_API_KEY: str = "sk-fake-key-for-development"  # Set a real key in production
 
     # Database
     DATABASE_URL: str = "sqlite:///./app.db"

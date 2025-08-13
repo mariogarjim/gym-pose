@@ -19,3 +19,8 @@ def calculate_angle(a, b, c):
         print(f"Error calculating angle: {e}")
         print(f"Points: a={a}, b={b}, c={c}")
         return 0.0
+
+
+def read_documentation() -> str:
+    with open("app/documentation/checks.md", "r") as file:
+        return file.read()

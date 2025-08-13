@@ -5,7 +5,7 @@ from zipfile import ZipFile
 
 import cv2
 import numpy as np
-from app.enum import VideoFeedbackEnum
+from app.enum import ExerciseMeasureEnum
 
 
 class VideoService:
@@ -13,7 +13,7 @@ class VideoService:
         pass
 
     def _encode_frames_to_video(
-        self, frames: list[np.ndarray], fps: int, extra_name: str
+        self, frames: list[np.ndarray], fps: float, extra_name: str
     ) -> bytes:
         if not frames:
             return None
@@ -33,8 +33,8 @@ class VideoService:
 
     def process_videos(
         self,
-        videos: dict[VideoFeedbackEnum, list[np.ndarray]],
-        fps: int,
+        videos: dict[ExerciseMeasureEnum, list[np.ndarray]],
+        fps: float,
     ) -> io.BytesIO:
         root_dir_name = "videos"
         zip_buffer = io.BytesIO()

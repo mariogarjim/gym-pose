@@ -31,10 +31,13 @@ class ExerciseFeedbackEnum(Enum):
         return self.value
 
 
-class VideoFeedbackEnum(Enum):
-    POSITIVE = "positive"
-    IMPROVEMENT = "improvement"
-    NEGATIVE = "negative"
+class Viewpoint(str, Enum):
+    FRONT = "front"
+    SIDE = "side"
+    BACK = "back"
 
-    def __str__(self):
-        return self.value
+
+class ExerciseRatingEnum(Enum):
+    PERFECT = "perfect"
+    WARNING = "warning"
+    DANGEROUS = "dangerous"

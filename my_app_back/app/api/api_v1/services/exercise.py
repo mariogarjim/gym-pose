@@ -1,7 +1,7 @@
 import typing as t
 import numpy as np
 import mediapipe as mp
-from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExerciseFeedbackEnum
+from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExerciseRatingEnum
 from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmarkList
 from app.utils import calculate_angle
 from app.api.api_v1.services.draw import (
@@ -28,11 +28,17 @@ class RelevantFeedbackWindow:
         self.number_of_relevant_frames = number_of_relevant_frames
         self.comment = comment
 
+    def __str__(self):
+        return f"RelevantFeedbackWindow(from_frame={self.from_frame}, to_frame={self.to_frame}, number_of_relevant_frames={self.number_of_relevant_frames}, comment={self.comment})"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class ExerciseFeedback:
     def __init__(
         self,
-        feedback: ExerciseFeedbackEnum,
+        feedback: ExerciseRatingEnum,
         comment: str = "",
         relevant_windows: list[RelevantFeedbackWindow] = [],
     ):
@@ -81,6 +87,10 @@ class BaseExercise:
         self.exercise = exercise
         self.total_frames = total_frames
 
+        # Temporal windows basic parameters
+        self.window_size = 30
+        self.window_threshold_frames = 10
+
     def evaluate_frame(
         self,
         frame_img: np.ndarray,
@@ -124,23 +134,15 @@ class ExerciseSquad(BaseExercise):
     def __init__(self, total_frames: int):
         super().__init__(ExerciseEnum.SQUAT, total_frames)
 
+        # Initial values for the feedback experimentation:
         self.back_posture = [0] * self.total_frames
         self.deep_squad = False
-        self.deepest_squad = 9999
-        self.deepest_frame = 0
         self.head_alignment = [0] * self.total_frames
 
+        # Drawed frames list
         self.back_posture_drawn_frames = []
         self.deep_squad_drawn_frames = []
         self.head_alignment_drawn_frames = []
-
-        self.positive_feedback = []
-        self.improvement_feedback = []
-        self.negative_feedback = []
-
-        # Temporal windows parameters
-        self.window_size = 30
-        self.window_threshold_frames = 10
 
     def evaluate_frame(
         self,
@@ -192,9 +194,7 @@ class ExerciseSquad(BaseExercise):
         print("########################")
         print("Frame: ", frame)
         print("Back_posture: ", self.back_posture[frame])
-        print(
-            f"Depth: {depth}. Deep_squad:  {self.deep_squad}. Deepest_frame: {self.deepest_frame}"
-        )
+        print(f"Depth: {depth}. Deep_squad:  {self.deep_squad}")
         print(
             f"Horizontal_offset: {horizontal_offset}. Max_offset: {max_offset}. Head_alignment: {self.head_alignment[frame]}"
         )
@@ -231,10 +231,7 @@ class ExerciseSquad(BaseExercise):
             feedback[ExerciseMeasureEnum.SQUAT_DEPTH.value],
         )
 
-        number_of_windows = self.total_frames // self.window_size
-
-        squat_torso_angle_feedback = super().get_relevant_feedback_windows(
-            number_of_windows=number_of_windows,
+        squat_torso_angle_feedback = self._get_relevant_feedback_windows(
             measure=ExerciseMeasureEnum.SQUAT_TORSO_ANGLE,
             measure_feedback=self.back_posture,
             window_threshold_frames=self.window_threshold_frames,
@@ -476,7 +473,7 @@ class ExercisePullUp(BaseExercise):
                 arms_nearly_extended_feedback
             )
             self.positive_feedback.append(
-                ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED.value,
+                ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED,
             )
         else:
             feedback[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED.value] = (
@@ -486,7 +483,7 @@ class ExercisePullUp(BaseExercise):
                 )
             )
             self.improvement_feedback.append(
-                ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED.value,
+                ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED,
             )
 
         chin_over_bar_feedback = super().get_relevant_feedback_windows(
@@ -499,29 +496,25 @@ class ExercisePullUp(BaseExercise):
                 comment="For the up phase, the chin is correctly over the bar",
             ),
         )
-        videos[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR.value] = (
+        videos[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = (
             self.chin_over_bar_drawn_frames
         )
         if chin_over_bar_feedback:
-            feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR.value] = (
-                ExerciseFeedback(
-                    feedback=ExerciseFeedbackEnum.OPTIMAL,
-                    comment="For the up phase, the chin is correctly over the bar",
-                    relevant_windows=chin_over_bar_feedback,
-                )
+            feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.OPTIMAL,
+                comment="For the up phase, the chin is correctly over the bar",
+                relevant_windows=chin_over_bar_feedback,
             )
             self.positive_feedback.append(
-                ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR.value,
+                ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR,
             )
         else:
-            feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR.value] = (
-                ExerciseFeedback(
-                    feedback=ExerciseFeedbackEnum.IMPROVABLE,
-                    comment="For the up phase, the chin is not over the bar",
-                )
+            feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = ExerciseFeedback(
+                feedback=ExerciseFeedbackEnum.IMPROVABLE,
+                comment="For the up phase, the chin is not over the bar",
             )
             self.improvement_feedback.append(
-                ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR.value,
+                ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR,
             )
 
         shoulder_engagement_feedback = super().get_relevant_feedback_windows(
@@ -542,7 +535,7 @@ class ExercisePullUp(BaseExercise):
                 shoulder_engagement_feedback
             )
             self.positive_feedback.append(
-                ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT.value,
+                ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT,
             )
         else:
             feedback[ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT.value] = (
@@ -552,7 +545,7 @@ class ExercisePullUp(BaseExercise):
                 )
             )
             self.improvement_feedback.append(
-                ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT.value,
+                ExerciseMeasureEnum.PULL_UP_SHOULDER_ENGAGEMENT,
             )
 
         return SummarizedFeedback(
