@@ -53,14 +53,16 @@ class PoseEvaluationService:
 
             final_evaluation: FinalEvaluation = video_service.get_final_evaluation()
 
+            print("########################")
+            print("Final evaluation: ", final_evaluation.feedback)
+            print("########################")
+
             output_feedback.append(final_evaluation.feedback)
             final_evaluations_videos.append(final_evaluation.videos)
 
         output_feedback = video_service.feedback_service.summarize_final_evaluation(
             output_feedback, exercise_type
         )
-
-        print(f"final_evaluations_videos: {final_evaluations_videos}")
 
         output_video_paths = []
         for index in range(len(self.video_services)):

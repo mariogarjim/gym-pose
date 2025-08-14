@@ -46,9 +46,6 @@ class FeedbackService:
                     )
                     improvement_feedback.append(improvement_point)
 
-            print(f"positive_feedback: {positive_feedback}")
-            print(f"improvement_feedback: {improvement_feedback}")
-
         return Feedback(
             exercise=exercise,
             overall_score=overall_score,
