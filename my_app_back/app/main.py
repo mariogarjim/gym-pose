@@ -7,7 +7,7 @@ import traceback
 import logging
 
 from app.core.config import settings
-from app.api.api_v2.api.router.video import router as api_router_v2
+from app.api.api_v2.api.router import pose_evaluation_router
 
 # Configure logging
 logging.basicConfig(
@@ -76,7 +76,7 @@ app.add_middleware(
 )
 
 # Include API router
-app.include_router(api_router_v2, prefix=settings.API_V2_STR)
+app.include_router(pose_evaluation_router, prefix=settings.API_V2_STR)
 
 
 @app.get("/")

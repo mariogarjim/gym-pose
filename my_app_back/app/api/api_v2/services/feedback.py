@@ -15,16 +15,18 @@ class FeedbackService:
 
     def summarize_final_evaluation(
         self,
-        final_evaluation_feedbacks: t.List[dict[ExerciseMeasureEnum, ExerciseFeedback]],
+        final_evaluation_feedbacks_list: t.List[
+            dict[ExerciseMeasureEnum, ExerciseFeedback]
+        ],
         exercise: ExerciseEnum,
-        show_all: bool = False,
+        show_all: bool = True,
     ) -> Feedback:
         overall_score = 80
         previous_scores = [70, 80, 81, 75]
 
         positive_feedback = []
         improvement_feedback = []
-        for final_evaluation_feedback in final_evaluation_feedbacks:
+        for final_evaluation_feedback in final_evaluation_feedbacks_list:
             for measure, feedback_value in final_evaluation_feedback.items():
                 if feedback_value.rating == ExerciseRatingEnum.PERFECT:
                     positive_feedback.append(feedback_value.comment)
@@ -44,6 +46,9 @@ class FeedbackService:
                     )
                     improvement_feedback.append(improvement_point)
 
+            print(f"positive_feedback: {positive_feedback}")
+            print(f"improvement_feedback: {improvement_feedback}")
+
         return Feedback(
             exercise=exercise,
             overall_score=overall_score,
@@ -60,11 +65,6 @@ class FeedbackService:
         negative_feedback: list[ExerciseFeedback],
     ) -> Feedback:
         improvement_points = []
-
-        print("feedback", feedback)
-        print("positive_feedback", positive_feedback)
-        print("improvement_feedback", improvement_feedback)
-        print("negative_feedback", negative_feedback)
 
         positive_feedback = []
         for pos_fed in positive_feedback:

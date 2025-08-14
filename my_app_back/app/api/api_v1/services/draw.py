@@ -181,7 +181,14 @@ def draw_back_posture(
 
 
 def draw_squad_depth(
-    frame, knee, hip, depth, knee_color=(0, 255, 0), hip_color=(0, 0, 255), thickness=2
+    frame,
+    knee,
+    hip,
+    depth,
+    frame_number,
+    knee_color=(0, 255, 0),
+    hip_color=(0, 0, 255),
+    thickness=2,
 ):
     """
     Dibuja una línea horizontal a la altura de la rodilla y un punto sobre la cadera.
@@ -213,7 +220,7 @@ def draw_squad_depth(
     # Etiquetas opcionales
     cv2.putText(
         frame,
-        f"Hip level. Distance to knee: {depth}",
+        f"Hip level. Distance to knee: {depth} frame: {frame_number}",
         (10, knee_px[1] - 10),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.5,
@@ -257,8 +264,6 @@ def draw_head_alignment(
     # 2. Mark points
     cv2.circle(frame, shoulder_px, 5, (0, 0, 255), -1)  # red
     cv2.circle(frame, ear_px, 5, (255, 0, 0), -1)  # blue
-
-    print("frame.shape[1]", frame.shape[1])
 
     # 3. Optional: annotate horizontal offset
     offset_px = ear_px[0] - shoulder_px[0]

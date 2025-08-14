@@ -8,6 +8,7 @@ class ExerciseEnum(Enum):
 
 
 class ExerciseMeasureEnum(Enum):
+    BASIC_LANDMARKS = "basic_landmarks"
     SQUAT_KNEE_ANKLE_ALIGNMENT = "squat_knee_ankle_alignment"
     SQUAT_DEPTH = "squat_depth"
     SQUAT_TORSO_ANGLE = "squat_torso_angle"

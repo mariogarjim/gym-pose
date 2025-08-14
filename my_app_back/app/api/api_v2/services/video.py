@@ -2,32 +2,56 @@ import io
 import os
 import tempfile
 import typing as t
-from io import BytesIO
 from zipfile import ZipFile
 
 import cv2
 import mediapipe as mp
 import numpy as np
 from fastapi import HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
 
 from app.api.api_v2.schemas.video import VideoMetadata
-from app.api.api_v2.services.exercise import ExerciseFactory, BaseExerciseService
+from app.api.api_v2.services.exercise import ExerciseFactory
 from app.api.api_v2.services.feedback import FeedbackService
-from app.enum import ExerciseEnum, ExerciseMeasureEnum, Viewpoint
+from app.enum import ExerciseEnum, Viewpoint
 from app.api.api_v2.schemas.exercise import FinalEvaluation
 
 
 class VideoService:
     def __init__(self, feedback_service: FeedbackService):
-        self.feedback_service = feedback_service
         self.mp_pose = mp.solutions.pose
+        self.feedback_service = feedback_service
 
         self.summarized_final_evaluation: FinalEvaluation = None
         self.video_metadata: t.List[VideoMetadata] = []
         self.video_paths: t.List[str] = []
 
-        self.exercise_service_map: dict[Viewpoint, BaseExerciseService] = {}
+    def set_video_params(self, video_path: str, viewpoint: Viewpoint) -> None:
+        """Preprocess the video."""
+        self.viewpoint = viewpoint
+        cap = cv2.VideoCapture(video_path)
+
+        # Get the video metadata
+        self.fps = cap.get(cv2.CAP_PROP_FPS) if cap.get(cv2.CAP_PROP_FPS) else 30
+        self.total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        # Get the video dimensions
+        ok, frame = cap.read()
+        if not ok:
+            cap.release()
+            raise RuntimeError(
+                f"Could not read the first frame of the video in {video_path}"
+            )
+        self.video_path = video_path
+        h, w = frame.shape[:2]
+
+        # check if the video is vertical
+        print(f"h: {h}, w: {w}")
+        is_vertical = h > w
+        if not is_vertical:
+            raise HTTPException(
+                status_code=400,
+                detail=f"The video is not vertical. h: {h}, w: {w}. Please upload a vertical video.",
+            )
 
     def _get_exercise_service(self, exercise_type: ExerciseEnum, total_frames: int):
         """Set the exercise service based on the exercise type.
@@ -40,41 +64,17 @@ class VideoService:
     def _set_exercise_service(self, exercise_type: ExerciseEnum, total_frames: int):
         self.exercise_service = self._get_exercise_service(exercise_type, total_frames)
 
-    async def _save_to_temp_file(self, file: UploadFile) -> str:
-        """Save the video file to a temporary file."""
-        video_fd, video_path = tempfile.mkstemp(suffix=".mp4")
-        os.close(video_fd)
-
-        with open(video_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
-
-        self.video_paths.append(video_path)
-
-        return video_path
-
-    def _process_video(
+    def process_video(
         self,
-        video_path: str,
         exercise_type: ExerciseEnum,
-        metadata: t.Optional[VideoMetadata],
     ) -> None:
         """Process a video file and analyze exercise form."""
-        cap = cv2.VideoCapture(video_path)
+        cap = cv2.VideoCapture(self.video_path)
         frame_count = 0
 
-        if not metadata:
-            metadata = VideoMetadata(
-                fps=cap.get(cv2.CAP_PROP_FPS),
-                total_frames=int(cap.get(cv2.CAP_PROP_FRAME_COUNT)),
-                viewpoint=Viewpoint.FRONT,
-            )
-            self.video_metadata.append(metadata)
-
         self.exercise_service = self._get_exercise_service(
-            exercise_type, metadata.total_frames
+            exercise_type, self.total_frames
         )
-        self.exercise_service_map[metadata.viewpoint] = self.exercise_service
 
         with self.mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
             while cap.isOpened():
@@ -87,7 +87,7 @@ class VideoService:
                 landmarks = result.pose_landmarks
 
                 if landmarks:
-                    self.exercise_service_map[metadata.viewpoint].evaluate_frame(
+                    self.exercise_service.evaluate_frame(
                         frame_img=frame,
                         frame=frame_count,
                         landmarks=landmarks,
@@ -97,25 +97,30 @@ class VideoService:
 
             cap.release()
 
-    def _clean_temp_files(self) -> None:
-        """Clean up the temporary files."""
-        for path in self.video_paths:
-            if os.path.exists(path):
-                os.remove(path)
+        print(f"video path: {self.video_path} processed")
 
-    def _encode_frames_to_video(
-        self, frames: list[np.ndarray], extra_name: str, index: int, fps: int
+    def get_final_evaluation(self) -> FinalEvaluation:
+        self._clean_temp_file()
+        return self.exercise_service.get_final_evaluation()
+
+    def _clean_temp_file(self) -> None:
+        """Clean up the temporary files."""
+        if os.path.exists(self.video_path):
+            os.remove(self.video_path)
+
+    def encode_frames_to_video(
+        self, frames: list[np.ndarray], extra_name: str
     ) -> bytes:
         if not frames:
             return None
         height, width, _ = frames[0].shape
-        temp_fd, temp_path = tempfile.mkstemp(suffix=f"_{extra_name}_{index}.mp4")
+        temp_fd, temp_path = tempfile.mkstemp(suffix=f"_{extra_name}.mp4")
         os.close(temp_fd)
 
         out = cv2.VideoWriter(
             temp_path,
             cv2.VideoWriter_fourcc(*"mp4v"),
-            fps,
+            self.fps,
             (width, height),
         )
 
@@ -125,78 +130,41 @@ class VideoService:
 
         return temp_path
 
-    def _process_videos_response(
-        self,
-        videos: dict[ExerciseMeasureEnum, list[np.ndarray]],
-        video_metadata: t.List[VideoMetadata],
+
+class VideoServiceFactory:
+    @staticmethod
+    def get_video_service(video_path: str, viewpoint: Viewpoint) -> VideoService:
+        """Get the video service for the given video path."""
+        feedback_service = FeedbackService()
+
+        video_service = VideoService(feedback_service)
+        video_service.set_video_params(video_path, viewpoint)
+        return video_service
+
+    @staticmethod
+    async def save_to_temp_file(file: UploadFile) -> str:
+        """Save the video file to a temporary file."""
+        video_fd, video_path = tempfile.mkstemp(suffix=".mp4")
+        os.close(video_fd)
+
+        with open(video_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+
+        return video_path
+
+    @staticmethod
+    def process_videos_response(
+        video_paths: t.List[str],
     ) -> io.BytesIO:
         """Process the videos and return a zip file."""
+        print("Processing videos response")
         root_dir_name = "videos"
         zip_buffer = io.BytesIO()
         with ZipFile(zip_buffer, "w") as zip_archive:
-            index = 0
-            for video in videos:
-                fps = video_metadata[index].fps
-                for feedback, frames in video.items():
-                    video_path = self._encode_frames_to_video(
-                        frames, feedback.value, index, fps
-                    )
-                    if video_path:
-                        arcname = os.path.join(
-                            root_dir_name, feedback.value, os.path.basename(video_path)
-                        )
-                    zip_archive.write(video_path, arcname=arcname)
-                    index += 1
+            for video_path in video_paths:
+                arcname = os.path.join(root_dir_name, os.path.basename(video_path))
+                zip_archive.write(video_path, arcname=arcname)
 
         zip_buffer.seek(0)
         return zip_buffer
-
-    async def upload_and_process(
-        self,
-        files: t.List[UploadFile],
-        exercise_type: ExerciseEnum,
-        video_metadata: t.Optional[t.List[VideoMetadata]],
-    ) -> StreamingResponse:
-        """
-        Process videos and return a streaming response.
-        """
-
-        for file in files:
-            if not file.content_type.startswith("video/"):
-                raise HTTPException(status_code=400, detail="File must be a video")
-
-        for file in files:
-            video_path = await self._save_to_temp_file(file)
-
-        if video_metadata:
-            for video_path, metadata in zip(self.video_paths, video_metadata):
-                self._process_video(video_path, exercise_type, metadata)
-        else:
-            for video_path in self.video_paths:
-                self._process_video(video_path, exercise_type, metadata=None)
-
-        final_evaluations_feedback = []
-        final_evaluations_videos = []
-        for viewpoint_exercise_service in self.exercise_service_map.values():
-            final_evaluation = viewpoint_exercise_service.get_final_evaluation()
-            final_evaluations_feedback.append(final_evaluation.feedback)
-            final_evaluations_videos.append(final_evaluation.videos)
-
-        output_feedback = self.feedback_service.summarize_final_evaluation(
-            final_evaluations_feedback, exercise_type
-        )
-
-        zip_buffer = self._process_videos_response(
-            final_evaluations_videos, self.video_metadata
-        )
-
-        self._clean_temp_files()
-
-        return StreamingResponse(
-            zip_buffer,
-            media_type="application/octet-stream",
-            headers={
-                "Content-Disposition": "attachment; filename=analysis_results.zip",
-                "X-Exercise-Feedback": output_feedback.model_dump_json(),
-            },
-        )

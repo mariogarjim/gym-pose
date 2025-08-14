@@ -5,6 +5,7 @@ MAPPING_EXERCISE_TO_EXERCISE_MEASURES = {
         ExerciseMeasureEnum.SQUAT_TORSO_ANGLE,
         ExerciseMeasureEnum.HEAD_ALIGNMENT,
         ExerciseMeasureEnum.SQUAT_DEPTH,
+        ExerciseMeasureEnum.BASIC_LANDMARKS,
     ],
 }
 

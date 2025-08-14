@@ -6,6 +6,4 @@ from app.enum import ExerciseEnum, Viewpoint
 
 
 class VideoMetadata(BaseModel):
-    fps: float
-    total_frames: int
-    viewpoint: Viewpoint
+    viewpoint: str

@@ -62,7 +62,7 @@ class ExerciseSquad(BaseExerciseService):
 
         # Initial values for the feedback experimentation:
         self.back_posture = [0] * self.total_frames
-        self.deep_squad = False
+        self.deep_squad_frames = 0
         self.head_alignment = [0] * self.total_frames
 
         # Drawed frames list
@@ -99,11 +99,14 @@ class ExerciseSquad(BaseExerciseService):
 
         # [SQUAD-02] Squad depth:
         depth = hip[1] - knee[1]
+        # Create a txt file with the depth and frame
+        with open("depth.txt", "a") as f:
+            f.write(f"depth: {depth} frame: {frame}\n")
         copy_frame_img = frame_img.copy()
-        draw_squad_depth(copy_frame_img, hip, knee, depth)
+        draw_squad_depth(copy_frame_img, hip, knee, depth, frame)
         self.videos[ExerciseMeasureEnum.SQUAT_DEPTH].append(copy_frame_img)
         if depth > 0:
-            self.deep_squad = True
+            self.deep_squad_frames += 1
 
         # [SQUAD-03] Head alignment:
         horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
@@ -113,6 +116,12 @@ class ExerciseSquad(BaseExerciseService):
         self.videos[ExerciseMeasureEnum.HEAD_ALIGNMENT].append(copy_frame_img)
         if horizontal_offset > max_offset:
             self.head_alignment[frame] = 1
+
+        # Draw landmarks
+        mp.solutions.drawing_utils.draw_landmarks(
+            frame_img, landmarks, mp.solutions.pose.POSE_CONNECTIONS
+        )
+        self.videos[ExerciseMeasureEnum.BASIC_LANDMARKS].append(frame_img)
 
     def _get_relevant_video_segments(
         self,
@@ -144,7 +153,8 @@ class ExerciseSquad(BaseExerciseService):
     ) -> FinalEvaluation:
         feedback: dict[ExerciseMeasureEnum, ExerciseFeedback] = {}
 
-        if not self.deep_squad:
+        deep_squad_threshold = 30
+        if self.deep_squad_frames < deep_squad_threshold:
             feedback[ExerciseMeasureEnum.SQUAT_DEPTH] = ExerciseFeedback(
                 rating=ExerciseRatingEnum.WARNING,
                 comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.SQUAT][

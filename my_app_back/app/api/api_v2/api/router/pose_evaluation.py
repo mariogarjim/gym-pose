@@ -1,13 +1,11 @@
 import typing as t
-import json
-from fastapi import APIRouter, Body, File, Form, status, HTTPException
+from fastapi import APIRouter, File, Form, status
 from fastapi.responses import StreamingResponse
 from fastapi import UploadFile
-from pydantic import ValidationError
 
-from app.api.api_v2.api.dependencies.services import VideoServiceDep
+from app.api.api_v2.api.dependencies.services import PoseEvaluationServiceDep
+from app.api.api_v2.services.pose_evaluation import PoseEvaluationService
 from app.api.api_v2.schemas.video import VideoMetadata
-from app.api.api_v2.services.video import VideoService
 from app.enum import ExerciseEnum
 
 router = APIRouter(
@@ -25,8 +23,8 @@ router = APIRouter(
 async def upload_video(
     video_files: t.List[UploadFile] = File(...),
     exercise_type: ExerciseEnum = Form(...),
-    video_metadata: t.Optional[t.List[VideoMetadata]] = Form(None),
-    video_service: VideoService = VideoServiceDep,
+    video_files_metadata: t.Optional[t.List[VideoMetadata]] = Form(None),
+    pose_evaluation_service: PoseEvaluationService = PoseEvaluationServiceDep,
 ):
     """
     Upload and analyze multiple video files for exercise form assessment.
@@ -37,6 +35,8 @@ async def upload_video(
     Raises:
         HTTPException: If file upload or processing fails
     """
-    return await video_service.upload_and_process(
-        files=video_files, exercise_type=exercise_type, video_metadata=video_metadata
+    return await pose_evaluation_service.evaluate_pose(
+        files=video_files,
+        exercise_type=exercise_type,
+        video_files_metadata=video_files_metadata,
     )

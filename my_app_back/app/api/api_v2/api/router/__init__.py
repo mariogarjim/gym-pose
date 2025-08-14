@@ -1,3 +1,3 @@
-from .video import router as video_router
+from .pose_evaluation import router as pose_evaluation_router
 
-__all__ = ["video_router"]
+__all__ = ["pose_evaluation_router"]
