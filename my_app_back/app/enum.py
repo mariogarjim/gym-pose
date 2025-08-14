@@ -9,6 +9,7 @@ class ExerciseEnum(Enum):
 
 class ExerciseMeasureEnum(Enum):
     BASIC_LANDMARKS = "basic_landmarks"
+
     SQUAT_KNEE_ANKLE_ALIGNMENT = "squat_knee_ankle_alignment"
     SQUAT_DEPTH = "squat_depth"
     SQUAT_TORSO_ANGLE = "squat_torso_angle"
@@ -16,8 +17,7 @@ class ExerciseMeasureEnum(Enum):
 
     PULL_UP_ARMS_NEARLY_EXTENDED = "pull_up_arms_nearly_extended"
     PULL_UP_CHIN_OVER_BAR = "pull_up_chin_over_bar"
-    PULL_UP_SHOULDER_ENGAGEMENT = "pull_up_shoulder_engagement"
-    PULL_UP_BODY_CONTROL = "pull_up_body_control"
+    PULL_UP_SHOULDER_CORRECT_POSITION = "pull_up_shoulder_correct_position"
 
     def __str__(self):
         return self.value

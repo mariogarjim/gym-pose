@@ -9,6 +9,10 @@ from app.api.api_v1.services.exercise import (
     draw_back_posture,
     draw_head_alignment,
     draw_squad_depth,
+    draw_pullup_chin_over_bar,
+    draw_pullup_shoulder_engagement,
+    draw_pullup_arms_nearly_extended,
+    calculate_angle,
 )
 from app.api.api_v2.schemas.exercise import (
     ExerciseFeedback,
@@ -232,13 +236,220 @@ class ExerciseBenchPress(BaseExerciseService):
 
 class ExercisePullUp(BaseExerciseService):
     def __init__(self, total_frames: int):
-        super().__init__(ExerciseEnum.PULL_UP)
-        self.total_frames = total_frames
+        super().__init__(ExerciseEnum.PULL_UP, total_frames)
+
+        # Initial values for the feedback experimentation:
+        self.shoulder_correct_position = [0] * self.total_frames
+        self.chin_over_bar = [0] * self.total_frames
+        self.arms_extended = [0] * self.total_frames
+
+        # Drawed frames list
+        self.videos: dict[ExerciseMeasureEnum, list[np.ndarray]] = {}
+        for measure in MAPPING_EXERCISE_TO_EXERCISE_MEASURES[ExerciseEnum.PULL_UP]:
+            self.videos[measure] = []
 
     def evaluate_frame(
         self, frame_img: np.ndarray, frame: int, landmarks: NormalizedLandmarkList
     ):
-        pass
+        # Get landmark coordinates using landmark indices
+        left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
+        right_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_HIP.value]
+        left_shoulder = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.LEFT_SHOULDER.value
+        ]
+        right_shoulder = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER.value
+        ]
+        left_elbow = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_ELBOW.value]
+        left_wrist = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_WRIST.value]
+        left_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_EAR.value]
+        right_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_EAR.value]
+        left_mouth = landmarks.landmark[mp.solutions.pose.PoseLandmark.MOUTH_LEFT.value]
+        left_index_finger = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.LEFT_INDEX.value
+        ]
+        right_index_finger = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.RIGHT_INDEX.value
+        ]
 
-    def summarize_feedback(self):
-        pass
+        # Convert landmarks to points for angle calculation
+        right_hip = [float(right_hip.x), float(right_hip.y)]
+        left_hip = [float(left_hip.x), float(left_hip.y)]
+        left_shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
+        right_shoulder = [float(right_shoulder.x), float(right_shoulder.y)]
+        left_elbow = [float(left_elbow.x), float(left_elbow.y)]
+        left_wrist = [float(left_wrist.x), float(left_wrist.y)]
+        left_ear = [float(left_ear.x), float(left_ear.y)]
+        right_ear = [float(right_ear.x), float(right_ear.y)]
+        left_mouth = [float(left_mouth.x), float(left_mouth.y)]
+        left_index_finger = [
+            float(left_index_finger.x),
+            float(left_index_finger.y),
+        ]
+        right_index_finger = [
+            float(right_index_finger.x),
+            float(right_index_finger.y),
+        ]
+
+        # [PULLUP-01] Full range of motion:
+
+        ## Botton (arms nearly extended)
+        arms_angle = calculate_angle(left_shoulder, left_elbow, left_wrist)
+        if arms_angle > 160:
+            self.arms_nearly_extended[frame] = 1
+        copy_frame_img = frame_img.copy()
+        draw_pullup_arms_nearly_extended(
+            copy_frame_img,
+            left_shoulder,
+            left_elbow,
+            left_wrist,
+            arms_angle,
+        )
+        self.videos[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED].append(
+            copy_frame_img
+        )
+
+        ## Top (chin over bar)
+        copy_frame_img = frame_img.copy()
+        chin_over_bar = draw_pullup_chin_over_bar(
+            copy_frame_img, left_index_finger, right_index_finger, left_mouth
+        )
+        self.videos[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR].append(copy_frame_img)
+        if chin_over_bar > 0:
+            self.chin_over_bar[frame] = 1
+
+        # [PULLUP-02] Shoulder Engagement
+        copy_frame_img = frame_img.copy()
+        left_shoulder_to_ear_distance, right_shoulder_to_ear_distance = (
+            draw_pullup_shoulder_engagement(
+                copy_frame_img, left_shoulder, left_ear, right_shoulder, right_ear
+            )
+        )
+        self.videos[ExerciseMeasureEnum.PULL_UP_SHOULDER_CORRECT_POSITION].append(
+            copy_frame_img
+        )
+        offset = 10
+        threshold = int(0.05 * frame_img.shape[0]) + offset
+        if (
+            left_shoulder_to_ear_distance < threshold
+            or right_shoulder_to_ear_distance < threshold
+        ):
+            self.shoulder_correct_position[frame] = 1
+
+        mp.solutions.drawing_utils.draw_landmarks(
+            frame_img, landmarks, mp.solutions.pose.POSE_CONNECTIONS
+        )
+        self.videos[ExerciseMeasureEnum.BASIC_LANDMARKS].append(frame_img)
+
+    def _get_relevant_video_segments(
+        self,
+        measure_feedback: t.List[int],
+        window_threshold_frames: int = None,
+    ) -> t.List[VideoSegment]:
+        if window_threshold_frames is None:
+            window_threshold_frames = self.window_threshold_frames
+
+        number_of_windows = self.total_frames // self.window_size
+
+        video_segments = []
+        for window_index in range(number_of_windows):
+            current_window_start = window_index * self.window_size
+            current_window_end = current_window_start + self.window_size
+            window = measure_feedback[current_window_start:current_window_end]
+
+            relevant_frames = np.sum(window)
+            if relevant_frames >= window_threshold_frames:
+                video_segments.append(
+                    VideoSegment(
+                        applies_to_full_video=False,
+                        start_frame=current_window_start,
+                        end_frame=current_window_end,
+                        relevant_frame_count=relevant_frames,
+                    )
+                )
+
+        return video_segments
+
+    def get_final_evaluation(self):
+        feedback: dict[ExerciseMeasureEnum, ExerciseFeedback] = {}
+
+        trheshold_frames_arms_extended = 3
+        threshold_frames_chin_over_bar = 3
+        threshold_frames_shoulder_correct_position = 10
+
+        arms_extended_feedback = self._get_relevant_video_segments(
+            measure_feedback=self.arms_extended,
+            window_threshold_frames=trheshold_frames_arms_extended,
+        )
+        if arms_extended_feedback:
+            feedback[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.WARNING,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.PULL_UP][
+                        ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED
+                    ][ExerciseRatingEnum.WARNING],
+                    video_segments=arms_extended_feedback,
+                )
+            )
+        else:
+            feedback[ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.PERFECT,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.PULL_UP][
+                        ExerciseMeasureEnum.PULL_UP_ARMS_NEARLY_EXTENDED
+                    ][ExerciseRatingEnum.PERFECT],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+
+        chin_over_bar_feedback = self._get_relevant_video_segments(
+            measure_feedback=self.chin_over_bar,
+            window_threshold_frames=threshold_frames_chin_over_bar,
+        )
+        if chin_over_bar_feedback:
+            feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = ExerciseFeedback(
+                rating=ExerciseRatingEnum.PERFECT,
+                comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.PULL_UP][
+                    ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR
+                ][ExerciseRatingEnum.PERFECT],
+                video_segments=chin_over_bar_feedback,
+            )
+        else:
+            feedback[ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR] = ExerciseFeedback(
+                rating=ExerciseRatingEnum.WARNING,
+                comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.PULL_UP][
+                    ExerciseMeasureEnum.PULL_UP_CHIN_OVER_BAR
+                ][ExerciseRatingEnum.WARNING],
+                video_segments=[VideoSegment(applies_to_full_video=True)],
+            )
+
+        shoulder_correct_position_feedback = self._get_relevant_video_segments(
+            measure_feedback=self.shoulder_correct_position,
+            window_threshold_frames=threshold_frames_shoulder_correct_position,
+        )
+
+        if shoulder_correct_position_feedback:
+            feedback[ExerciseMeasureEnum.PULL_UP_SHOULDER_CORRECT_POSITION] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.DANGEROUS,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.PULL_UP][
+                        ExerciseMeasureEnum.PULL_UP_SHOULDER_CORRECT_POSITION
+                    ][ExerciseRatingEnum.DANGEROUS],
+                    video_segments=shoulder_correct_position_feedback,
+                )
+            )
+        else:
+            feedback[ExerciseMeasureEnum.PULL_UP_SHOULDER_CORRECT_POSITION] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.PERFECT,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.PULL_UP][
+                        ExerciseMeasureEnum.PULL_UP_SHOULDER_CORRECT_POSITION
+                    ][ExerciseRatingEnum.PERFECT],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+
+        return FinalEvaluation(
+            feedback=feedback,
+            videos=self.videos,
+        )
