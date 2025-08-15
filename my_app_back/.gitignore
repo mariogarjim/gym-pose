@@ -1,3 +1,7 @@
+*.ipynb
+*.json
+*.mp4
+
 # Ignore testing videos
 /uploads/
 /uploads/*
