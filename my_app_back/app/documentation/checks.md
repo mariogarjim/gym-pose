@@ -1,5 +1,7 @@
 # Squads
 
+VIEWS: LATERAL (MANDATORY) - FRONT (OPTIONAL)
+
 1. [SQUAD-02] Back Posture:
 
 - The torso should remain relatively upright.
@@ -25,6 +27,8 @@ The ear should remain roughly aligned vertically with the shoulder or hip, depen
 
 # Pull-Ups
 
+VIEWS: BEHIND (MANDATORY)
+
 1. [PULLUP-01] Full Range of Motion (ROM)
 
 - The movement should begin from a dead hang with nearly full elbow extension.
@@ -41,3 +45,9 @@ The ear should remain roughly aligned vertically with the shoulder or hip, depen
 **Durante toda la repetición**
 
 ---
+
+# BENCH PRESS 
+
+VIEW: FRONT-OBLIQUE (MANDATORY)
+
+# SHOULDER LATERAL RAISE
