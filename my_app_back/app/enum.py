@@ -34,9 +34,6 @@ class ExerciseMeasureEnum(Enum):
         "side_lateral_raise_shoulders_incorrect_elevation"
     )
     SIDE_LATERAL_RAISE_SYMMETRY = "side_lateral_raise_symmetry"
-    SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION = (
-        "side_lateral_raise_shoulders_incorrect_elevation"
-    )
 
     def __str__(self):
         return self.value

@@ -35,6 +35,8 @@ class ExerciseFactory:
             return ExerciseBenchPress(total_frames)
         elif exercise_type == ExerciseEnum.PULL_UP:
             return ExercisePullUp(total_frames)
+        elif exercise_type == ExerciseEnum.SIDE_LATERAL_RAISE:
+            return ExerciseSideLateralRaises(total_frames)
         else:
             raise ValueError(f"Exercise {exercise_type} not supported")
 
@@ -475,7 +477,7 @@ class ExercisePullUp(BaseExerciseService):
 
 class ExerciseSideLateralRaises(BaseExerciseService):
     def __init__(self, total_frames: int):
-        super().__init__(ExerciseEnum.SIDE_LATERAL_RAISES, total_frames)
+        super().__init__(ExerciseEnum.SIDE_LATERAL_RAISE, total_frames)
 
         # Initial values for the feedback experimentation:
         self.arms_abduction_up_correct_position = [0] * self.total_frames
@@ -571,6 +573,19 @@ class ExerciseSideLateralRaises(BaseExerciseService):
             frame_img, landmarks, mp.solutions.pose.POSE_CONNECTIONS
         )
         self.videos[ExerciseMeasureEnum.BASIC_LANDMARKS].append(frame_img)
+        self.videos[
+            ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH
+        ].append(frame_img)
+        self.videos[
+            ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION
+        ].append(frame_img)
+        self.videos[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES].append(
+            frame_img
+        )
+        self.videos[
+            ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION
+        ].append(frame_img)
+        self.videos[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY].append(frame_img)
 
     def _get_relevant_video_segments(
         self,
@@ -608,7 +623,7 @@ class ExerciseSideLateralRaises(BaseExerciseService):
         too_high_threshold_frames = 5
 
         # Check if the arms are lifting up correctly
-        if self.arms_lifting_too_high.sum() > too_high_threshold_frames:
+        if np.sum(self.arms_lifting_too_high) > too_high_threshold_frames:
             feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH] = (
                 ExerciseFeedback(
                     rating=ExerciseRatingEnum.DANGEROUS,
@@ -634,7 +649,7 @@ class ExerciseSideLateralRaises(BaseExerciseService):
             )
 
         # Arms correct abduction
-        if self.arms_abduction_up_correct_position.sum() <= generic_threshold_frames:
+        if np.sum(self.arms_abduction_up_correct_position) <= generic_threshold_frames:
             feedback[
                 ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION
             ] = ExerciseFeedback(
@@ -660,7 +675,7 @@ class ExerciseSideLateralRaises(BaseExerciseService):
             )
 
         # Check if the elbows are bending correctly
-        if self.incorrect_elbows_bend_angles.sum() > generic_threshold_frames:
+        if np.sum(self.incorrect_elbows_bend_angles) > generic_threshold_frames:
             feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES] = (
                 ExerciseFeedback(
                     rating=ExerciseRatingEnum.WARNING,
@@ -686,7 +701,7 @@ class ExerciseSideLateralRaises(BaseExerciseService):
             )
 
         # Check if the shoulders are elevated correctly
-        if self.incorrect_symmetry.sum() > generic_threshold_frames:
+        if np.sum(self.incorrect_symmetry) > generic_threshold_frames:
             feedback[
                 ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION
             ] = ExerciseFeedback(
@@ -712,7 +727,7 @@ class ExerciseSideLateralRaises(BaseExerciseService):
             )
 
         # Check if the body is symmetrical
-        if self.incorrect_symmetry.sum() > generic_threshold_frames:
+        if np.sum(self.incorrect_symmetry) > generic_threshold_frames:
             feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY] = (
                 ExerciseFeedback(
                     rating=ExerciseRatingEnum.DANGEROUS,
