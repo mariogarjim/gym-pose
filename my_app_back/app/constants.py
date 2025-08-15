@@ -16,6 +16,14 @@ MAPPING_EXERCISE_TO_EXERCISE_MEASURES = {
     ExerciseEnum.BENCH_PRESS: [
         ExerciseMeasureEnum.BASIC_LANDMARKS,
     ],
+    ExerciseEnum.SIDE_LATERAL_RAISE: [
+        ExerciseMeasureEnum.BASIC_LANDMARKS,
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH,
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION,
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES,
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION,
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY,
+    ],
 }
 
 
@@ -46,6 +54,36 @@ MAPPING_EXERCISE_MEASURE_TO_COMMENT = {
         ExerciseMeasureEnum.PULL_UP_SHOULDER_CORRECT_POSITION: {
             ExerciseRatingEnum.PERFECT: "The shoulders are in the correct position",
             ExerciseRatingEnum.DANGEROUS: "The shoulders are not in the correct position. The shoulders should be in the correct position.",
+        },
+    },
+    ExerciseEnum.SIDE_LATERAL_RAISE: {
+        ExerciseMeasureEnum.BASIC_LANDMARKS: {
+            ExerciseRatingEnum.PERFECT: "The side lateral raises are perfect",
+            ExerciseRatingEnum.WARNING: "The side lateral raises are not perfect. The side lateral raises should be perfect.",
+        },
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH: {
+            ExerciseRatingEnum.PERFECT: "You don't lift your arms too high, this is good!",
+            ExerciseRatingEnum.DANGEROUS: "You lift your arms too high, this is not good.",
+        },
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION: {
+            ExerciseRatingEnum.PERFECT: "You lift your arms up correctly, this is good!",
+            ExerciseRatingEnum.WARNING: "You don't lift your arms up enough, this is not good.",
+        },
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES: {
+            ExerciseRatingEnum.PERFECT: "You maintain a neutral elbow position while lifting your arms up, this is good!",
+            ExerciseRatingEnum.WARNING: "You don't bend your elbows correctly. They shouldn't be bent too much neither be locked.",
+        },
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION: {
+            ExerciseRatingEnum.PERFECT: "You maintain a neutral shoulder position while lifting your arms up, this is good!",
+            ExerciseRatingEnum.DANGEROUS: "You don't maintain a neutral shoulder position while lifting your arms up, this is not good.",
+        },
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY: {
+            ExerciseRatingEnum.PERFECT: "You maintain a symmetrical body while lifting your arms up, this is good!",
+            ExerciseRatingEnum.DANGEROUS: "You don't maintain a symmetrical body while lifting your arms up, this is not good.",
+        },
+        ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION: {
+            ExerciseRatingEnum.PERFECT: "You maintain a neutral shoulder position while lifting your arms up, this is good!",
+            ExerciseRatingEnum.DANGEROUS: "You don't maintain a neutral shoulder position while lifting your arms up, this is not good.",
         },
     },
 }

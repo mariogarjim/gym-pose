@@ -471,3 +471,273 @@ class ExercisePullUp(BaseExerciseService):
             feedback=feedback,
             videos=self.videos,
         )
+
+
+class ExerciseSideLateralRaises(BaseExerciseService):
+    def __init__(self, total_frames: int):
+        super().__init__(ExerciseEnum.SIDE_LATERAL_RAISES, total_frames)
+
+        # Initial values for the feedback experimentation:
+        self.arms_abduction_up_correct_position = [0] * self.total_frames
+        self.arms_lifting_too_high = [0] * self.total_frames
+        self.incorrect_elbows_bend_angles = [0] * self.total_frames
+        self.left_shoulder_elevation_array = []
+        self.right_shoulder_elevation_array = []
+        self.incorrect_symmetry = [0] * self.total_frames
+
+        # Drawed frames list
+        self.videos: dict[ExerciseMeasureEnum, list[np.ndarray]] = {}
+        for measure in MAPPING_EXERCISE_TO_EXERCISE_MEASURES[
+            ExerciseEnum.SIDE_LATERAL_RAISE
+        ]:
+            self.videos[measure] = []
+
+    def evaluate_frame(
+        self, frame_img: np.ndarray, frame: int, landmarks: NormalizedLandmarkList
+    ):
+        # Get landmark coordinates using landmark indices
+        left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
+        right_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.RIGHT_HIP.value]
+        left_shoulder = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.LEFT_SHOULDER.value
+        ]
+        right_shoulder = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER.value
+        ]
+        left_elbow = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_ELBOW.value]
+        right_elbow = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.RIGHT_ELBOW.value
+        ]
+        left_wrist = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_WRIST.value]
+        right_wrist = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.RIGHT_WRIST.value
+        ]
+
+        # Convert landmarks to points for angle calculation
+        right_hip = [float(right_hip.x), float(right_hip.y)]
+        left_hip = [float(left_hip.x), float(left_hip.y)]
+        left_shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
+        right_shoulder = [float(right_shoulder.x), float(right_shoulder.y)]
+        left_elbow = [float(left_elbow.x), float(left_elbow.y)]
+        right_elbow = [float(right_elbow.x), float(right_elbow.y)]
+        left_wrist = [float(left_wrist.x), float(left_wrist.y)]
+        right_wrist = [float(right_wrist.x), float(right_wrist.y)]
+
+        # [SIDE_LATERAL_RAISE-01] Arms abduction not high enough or too high
+
+        left_abduction_angle = calculate_angle(left_hip, left_shoulder, left_wrist)
+        right_abduction_angle = calculate_angle(right_hip, right_shoulder, right_wrist)
+
+        lifting_too_high = left_abduction_angle > 110 and right_abduction_angle > 110
+
+        if lifting_too_high:
+            self.arms_lifting_too_high[frame] = 1
+
+        lifting_up_correct = (
+            left_abduction_angle > 70 and right_abduction_angle > 70
+        ) and not lifting_too_high
+
+        if lifting_up_correct:
+            self.arms_abduction_up_correct_position[frame] = 1
+
+        # [SIDE_LATERAL_RAISE-02] Elbows bend angles
+
+        left_elbow_bend_angle = calculate_angle(left_shoulder, left_elbow, left_wrist)
+        right_elbow_bend_angle = calculate_angle(
+            right_shoulder, right_elbow, right_wrist
+        )
+
+        locked_elbow = left_elbow_bend_angle < 10 or right_elbow_bend_angle < 10
+        too_much_elbow_bend = left_elbow_bend_angle > 40 or right_elbow_bend_angle > 40
+
+        if locked_elbow or too_much_elbow_bend:
+            self.incorrect_elbows_bend_angles[frame] = 1
+
+        # [SIDE_LATERAL_RAISE-03] Shoulders incorrect elevation
+
+        left_shoulder_elevation = left_shoulder[1] - left_hip[1]
+        right_shoulder_elevation = right_shoulder[1] - right_hip[1]
+
+        self.left_shoulder_elevation_array.append(left_shoulder_elevation)
+        self.right_shoulder_elevation_array.append(right_shoulder_elevation)
+
+        # [SIDE_LATERAL_RAISE-04] Symmetry
+
+        symmetry = abs(left_abduction_angle - right_abduction_angle)
+        if symmetry > 10:
+            self.incorrect_symmetry[frame] = 1
+
+        mp.solutions.drawing_utils.draw_landmarks(
+            frame_img, landmarks, mp.solutions.pose.POSE_CONNECTIONS
+        )
+        self.videos[ExerciseMeasureEnum.BASIC_LANDMARKS].append(frame_img)
+
+    def _get_relevant_video_segments(
+        self,
+        measure_feedback: t.List[int],
+        window_threshold_frames: int = None,
+    ) -> t.List[VideoSegment]:
+        if window_threshold_frames is None:
+            window_threshold_frames = self.window_threshold_frames
+
+        number_of_windows = self.total_frames // self.window_size
+
+        video_segments = []
+        for window_index in range(number_of_windows):
+            current_window_start = window_index * self.window_size
+            current_window_end = current_window_start + self.window_size
+            window = measure_feedback[current_window_start:current_window_end]
+
+            relevant_frames = np.sum(window)
+            if relevant_frames >= window_threshold_frames:
+                video_segments.append(
+                    VideoSegment(
+                        applies_to_full_video=False,
+                        start_frame=current_window_start,
+                        end_frame=current_window_end,
+                        relevant_frame_count=relevant_frames,
+                    )
+                )
+
+        return video_segments
+
+    def get_final_evaluation(self):
+        feedback: dict[ExerciseMeasureEnum, ExerciseFeedback] = {}
+
+        generic_threshold_frames = 10
+        too_high_threshold_frames = 5
+
+        # Check if the arms are lifting up correctly
+        if self.arms_lifting_too_high.sum() > too_high_threshold_frames:
+            feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.DANGEROUS,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.SIDE_LATERAL_RAISE
+                    ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH][
+                        ExerciseRatingEnum.DANGEROUS
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+        else:
+            feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.PERFECT,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.SIDE_LATERAL_RAISE
+                    ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH][
+                        ExerciseRatingEnum.PERFECT
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+
+        # Arms correct abduction
+        if self.arms_abduction_up_correct_position.sum() <= generic_threshold_frames:
+            feedback[
+                ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION
+            ] = ExerciseFeedback(
+                rating=ExerciseRatingEnum.PERFECT,
+                comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                    ExerciseEnum.SIDE_LATERAL_RAISE
+                ][
+                    ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION
+                ][ExerciseRatingEnum.PERFECT],
+                video_segments=[VideoSegment(applies_to_full_video=True)],
+            )
+        else:
+            feedback[
+                ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION
+            ] = ExerciseFeedback(
+                rating=ExerciseRatingEnum.WARNING,
+                comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                    ExerciseEnum.SIDE_LATERAL_RAISE
+                ][
+                    ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION
+                ][ExerciseRatingEnum.WARNING],
+                video_segments=[VideoSegment(applies_to_full_video=True)],
+            )
+
+        # Check if the elbows are bending correctly
+        if self.incorrect_elbows_bend_angles.sum() > generic_threshold_frames:
+            feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.WARNING,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.SIDE_LATERAL_RAISE
+                    ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES][
+                        ExerciseRatingEnum.WARNING
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+        else:
+            feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.PERFECT,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.SIDE_LATERAL_RAISE
+                    ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES][
+                        ExerciseRatingEnum.PERFECT
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+
+        # Check if the shoulders are elevated correctly
+        if self.incorrect_symmetry.sum() > generic_threshold_frames:
+            feedback[
+                ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION
+            ] = ExerciseFeedback(
+                rating=ExerciseRatingEnum.DANGEROUS,
+                comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                    ExerciseEnum.SIDE_LATERAL_RAISE
+                ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION][
+                    ExerciseRatingEnum.DANGEROUS
+                ],
+                video_segments=[VideoSegment(applies_to_full_video=True)],
+            )
+        else:
+            feedback[
+                ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION
+            ] = ExerciseFeedback(
+                rating=ExerciseRatingEnum.PERFECT,
+                comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                    ExerciseEnum.SIDE_LATERAL_RAISE
+                ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION][
+                    ExerciseRatingEnum.PERFECT
+                ],
+                video_segments=[VideoSegment(applies_to_full_video=True)],
+            )
+
+        # Check if the body is symmetrical
+        if self.incorrect_symmetry.sum() > generic_threshold_frames:
+            feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.DANGEROUS,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.SIDE_LATERAL_RAISE
+                    ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY][
+                        ExerciseRatingEnum.DANGEROUS
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+        else:
+            feedback[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.PERFECT,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.SIDE_LATERAL_RAISE
+                    ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY][
+                        ExerciseRatingEnum.PERFECT
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+
+        return FinalEvaluation(
+            feedback=feedback,
+            videos=self.videos,
+        )
