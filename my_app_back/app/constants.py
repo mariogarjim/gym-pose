@@ -86,4 +86,18 @@ MAPPING_EXERCISE_MEASURE_TO_COMMENT = {
             ExerciseRatingEnum.DANGEROUS: "You don't maintain a neutral shoulder position while lifting your arms up, this is not good.",
         },
     },
+    ExerciseEnum.TRICEPS_EXTENSION: {
+        ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION: {
+            ExerciseRatingEnum.PERFECT: "You complete the up extension, this is good!",
+            ExerciseRatingEnum.WARNING: "You don't complete the up extension, this is not good.",
+        },
+        ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_DOWN_EXTENSION: {
+            ExerciseRatingEnum.PERFECT: "You complete the down extension, this is good!",
+            ExerciseRatingEnum.WARNING: "You don't complete the down extension, this is not good.",
+        },
+        ExerciseMeasureEnum.TRICEPS_EXTENSION_SHOULDER_ANGLE: {
+            ExerciseRatingEnum.PERFECT: "You maintain a neutral shoulder angle, this is good!",
+            ExerciseRatingEnum.DANGEROUS: "You don't maintain a neutral shoulder angle, your body is probably shaking during the exercise.",
+        },
+    },
 }

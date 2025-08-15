@@ -6,6 +6,7 @@ class ExerciseEnum(Enum):
     BENCH_PRESS = "bench_press"
     PULL_UP = "pull_up"
     SIDE_LATERAL_RAISE = "side_lateral_raise"
+    TRICEPS_EXTENSION = "triceps_extension"
 
 
 class ExerciseMeasureEnum(Enum):
@@ -34,6 +35,13 @@ class ExerciseMeasureEnum(Enum):
         "side_lateral_raise_shoulders_incorrect_elevation"
     )
     SIDE_LATERAL_RAISE_SYMMETRY = "side_lateral_raise_symmetry"
+
+    # TRICEPS EXTENSION
+    TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION = "triceps_extension_complete_up_extension"
+    TRICEPS_EXTENSION_COMPLETE_DOWN_EXTENSION = (
+        "triceps_extension_complete_down_extension"
+    )
+    TRICEPS_EXTENSION_SHOULDER_ANGLE = "triceps_extension_shoulder_angle"
 
     def __str__(self):
         return self.value

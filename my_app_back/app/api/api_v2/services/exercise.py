@@ -672,7 +672,18 @@ class ExerciseSideLateralRaises(BaseExerciseService):
             )
 
         # Check if the shoulders are elevated correctly
-        if np.sum(self.incorrect_symmetry) > generic_threshold_frames:
+        average_ten_lowest_elevations = np.mean(
+            np.sort(self.left_shoulder_elevation_array)[:10]
+        )
+        average_ten_highest_elevations = np.mean(
+            np.sort(self.left_shoulder_elevation_array)[-10:]
+        )
+        baseline_elevation = average_ten_highest_elevations * 0.05
+
+        if (
+            abs(average_ten_lowest_elevations - average_ten_highest_elevations)
+            < baseline_elevation
+        ):
             feedback[
                 ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION
             ] = ExerciseFeedback(
@@ -717,6 +728,163 @@ class ExerciseSideLateralRaises(BaseExerciseService):
                     comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
                         ExerciseEnum.SIDE_LATERAL_RAISE
                     ][ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY][
+                        ExerciseRatingEnum.PERFECT
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+
+        return FinalEvaluation(
+            feedback=feedback,
+            videos=self.videos,
+        )
+
+
+class ExerciseTricepsExtension(BaseExerciseService):
+    def __init__(self, total_frames: int):
+        super().__init__(ExerciseEnum.TRICEPS_EXTENSION, total_frames)
+
+        # Initial values for the feedback experimentation:
+        self.complete_up_extension = [0] * self.total_frames
+        self.complete_down_extension = [0] * self.total_frames
+        self.shoulder_angle = []
+
+    def evaluate_frame(
+        self, frame_img: np.ndarray, frame: int, landmarks: NormalizedLandmarkList
+    ):
+        # Get landmark coordinates using landmark indices
+        left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
+        left_shoulder = landmarks.landmark[
+            mp.solutions.pose.PoseLandmark.LEFT_SHOULDER.value
+        ]
+        left_elbow = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_ELBOW.value]
+        left_wrist = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_WRIST.value]
+
+        # Convert landmarks to points for angle calculation
+        left_hip = [float(left_hip.x), float(left_hip.y)]
+        left_shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
+        left_elbow = [float(left_elbow.x), float(left_elbow.y)]
+        left_wrist = [float(left_wrist.x), float(left_wrist.y)]
+
+        # [TRICEPS_EXTENSION-01] Arms abduction not high enough or too high
+
+        elbow_extension_angle = calculate_angle(left_shoulder, left_elbow, left_wrist)
+
+        if elbow_extension_angle > 170:
+            self.complete_up_extension[frame] = 1
+        if elbow_extension_angle < 80:
+            self.complete_down_extension[frame] = 1
+
+        # [TRICEPS_EXTENSION-02] Shoulder angle
+        shoulder_angle = calculate_angle(left_hip, left_shoulder, left_elbow)
+
+        self.shoulder_angle.append(shoulder_angle)
+
+        mp.solutions.drawing_utils.draw_landmarks(
+            frame_img, landmarks, mp.solutions.pose.POSE_CONNECTIONS
+        )
+        self.videos[ExerciseMeasureEnum.BASIC_LANDMARKS].append(frame_img)
+        self.videos[ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION].append(
+            frame_img
+        )
+        self.videos[
+            ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_DOWN_EXTENSION
+        ].append(frame_img)
+        self.videos[ExerciseMeasureEnum.TRICEPS_EXTENSION_SHOULDER_ANGLE].append(
+            frame_img
+        )
+
+    def get_final_evaluation(self):
+        feedback: dict[ExerciseMeasureEnum, ExerciseFeedback] = {}
+
+        full_extension_threshold = 3
+
+        # Check if the arms are extending correctly
+        if np.sum(self.complete_up_extension) > full_extension_threshold:
+            feedback[ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.PERFECT,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.TRICEPS_EXTENSION
+                    ][ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION][
+                        ExerciseRatingEnum.PERFECT
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+        else:
+            feedback[ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.WARNING,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.TRICEPS_EXTENSION
+                    ][ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION][
+                        ExerciseRatingEnum.WARNING
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+
+        # Check if the arms are flexing correctly
+        if np.sum(self.complete_down_extension) > full_extension_threshold:
+            feedback[ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_DOWN_EXTENSION] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.PERFECT,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.TRICEPS_EXTENSION
+                    ][ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_DOWN_EXTENSION][
+                        ExerciseRatingEnum.PERFECT
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+        else:
+            feedback[ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_DOWN_EXTENSION] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.WARNING,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.TRICEPS_EXTENSION
+                    ][ExerciseMeasureEnum.TRICEPS_EXTENSION_COMPLETE_DOWN_EXTENSION][
+                        ExerciseRatingEnum.WARNING
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+
+        # Check if the shoulder angle is correct
+
+        # Sorted shoulder angles
+        sorted_shoulder_angles = np.sort(self.shoulder_angle)
+
+        # Average of the 10 lowest shoulder angles
+        average_ten_lowest_shoulder_angles = np.mean(sorted_shoulder_angles[:10])
+
+        # Average of the 10 highest shoulder angles
+        average_ten_highest_shoulder_angles = np.mean(sorted_shoulder_angles[-10:])
+
+        difference_between_lowest_and_highest_shoulder_angles = (
+            average_ten_highest_shoulder_angles - average_ten_lowest_shoulder_angles
+        )
+
+        if difference_between_lowest_and_highest_shoulder_angles > 10:
+            feedback[ExerciseMeasureEnum.TRICEPS_EXTENSION_SHOULDER_ANGLE] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.DANGEROUS,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.TRICEPS_EXTENSION
+                    ][ExerciseMeasureEnum.TRICEPS_EXTENSION_SHOULDER_ANGLE][
+                        ExerciseRatingEnum.DANGEROUS
+                    ],
+                    video_segments=[VideoSegment(applies_to_full_video=True)],
+                )
+            )
+        else:
+            feedback[ExerciseMeasureEnum.TRICEPS_EXTENSION_SHOULDER_ANGLE] = (
+                ExerciseFeedback(
+                    rating=ExerciseRatingEnum.PERFECT,
+                    comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[
+                        ExerciseEnum.TRICEPS_EXTENSION
+                    ][ExerciseMeasureEnum.TRICEPS_EXTENSION_SHOULDER_ANGLE][
                         ExerciseRatingEnum.PERFECT
                     ],
                     video_segments=[VideoSegment(applies_to_full_video=True)],
