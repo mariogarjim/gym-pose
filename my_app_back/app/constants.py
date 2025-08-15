@@ -13,6 +13,9 @@ MAPPING_EXERCISE_TO_EXERCISE_MEASURES = {
         ExerciseMeasureEnum.PULL_UP_SHOULDER_CORRECT_POSITION,
         ExerciseMeasureEnum.BASIC_LANDMARKS,
     ],
+    ExerciseEnum.BENCH_PRESS: [
+        ExerciseMeasureEnum.BASIC_LANDMARKS,
+    ],
 }
 
 

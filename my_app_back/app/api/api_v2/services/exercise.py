@@ -225,13 +225,31 @@ class ExerciseBenchPress(BaseExerciseService):
     def __init__(self, total_frames: int):
         super().__init__(ExerciseEnum.BENCH_PRESS, total_frames)
 
+        # Drawed frames list
+        self.videos: dict[ExerciseMeasureEnum, list[np.ndarray]] = {}
+        for measure in MAPPING_EXERCISE_TO_EXERCISE_MEASURES[ExerciseEnum.BENCH_PRESS]:
+            self.videos[measure] = []
+
     def evaluate_frame(
         self, frame_img: np.ndarray, frame: int, landmarks: NormalizedLandmarkList
     ):
-        pass
+        mp.solutions.drawing_utils.draw_landmarks(
+            frame_img, landmarks, mp.solutions.pose.POSE_CONNECTIONS
+        )
+        self.videos[ExerciseMeasureEnum.BASIC_LANDMARKS].append(frame_img)
 
-    def summarize_feedback(self):
-        pass
+    def get_final_evaluation(self):
+        dummy_feedback = {
+            ExerciseMeasureEnum.BASIC_LANDMARKS: ExerciseFeedback(
+                rating=ExerciseRatingEnum.PERFECT,
+                comment="",
+                video_segments=[VideoSegment(applies_to_full_video=True)],
+            )
+        }
+        return FinalEvaluation(
+            feedback=dummy_feedback,
+            videos=self.videos,
+        )
 
 
 class ExercisePullUp(BaseExerciseService):
