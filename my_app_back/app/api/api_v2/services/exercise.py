@@ -587,35 +587,6 @@ class ExerciseSideLateralRaises(BaseExerciseService):
         ].append(frame_img)
         self.videos[ExerciseMeasureEnum.SIDE_LATERAL_RAISE_SYMMETRY].append(frame_img)
 
-    def _get_relevant_video_segments(
-        self,
-        measure_feedback: t.List[int],
-        window_threshold_frames: int = None,
-    ) -> t.List[VideoSegment]:
-        if window_threshold_frames is None:
-            window_threshold_frames = self.window_threshold_frames
-
-        number_of_windows = self.total_frames // self.window_size
-
-        video_segments = []
-        for window_index in range(number_of_windows):
-            current_window_start = window_index * self.window_size
-            current_window_end = current_window_start + self.window_size
-            window = measure_feedback[current_window_start:current_window_end]
-
-            relevant_frames = np.sum(window)
-            if relevant_frames >= window_threshold_frames:
-                video_segments.append(
-                    VideoSegment(
-                        applies_to_full_video=False,
-                        start_frame=current_window_start,
-                        end_frame=current_window_end,
-                        relevant_frame_count=relevant_frames,
-                    )
-                )
-
-        return video_segments
-
     def get_final_evaluation(self):
         feedback: dict[ExerciseMeasureEnum, ExerciseFeedback] = {}
 
