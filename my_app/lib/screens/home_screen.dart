@@ -1,264 +1,42 @@
-import 'dart:developer';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'configure_analysis_screen.dart';
+import 'package:my_app/custom_navigation_bar.dart';
+import 'package:my_app/models/feedback.dart';
+import 'package:my_app/widgets/home_exercise_boxes.dart';
+import 'package:my_app/widgets/home_summary_boxes.dart';
+import 'package:my_app/theme/text_styles.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class HomeScreen extends StatelessWidget {
+  const HomeScreen({super.key, this.initialIndex = 0});
 
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final ImagePicker _picker = ImagePicker();
-  bool _isProcessing = false;
-
-  Future<void> _pickAndUploadVideo() async {
-    try {
-      // Request both permissions
-      final videoStatus = await Permission.videos.request();
-      final imageStatus = await Permission.photos.request();
-      
-      log('video permission: ${videoStatus.isGranted}');
-      log('image permission: ${imageStatus.isGranted}');
-      
-      if (videoStatus.isGranted || imageStatus.isGranted) {
-        final XFile? video = await _picker.pickVideo(source: ImageSource.gallery);
-        log('video path: ${video?.path}');
-        if (video == null) return;
-
-        final ext = path.extension(video.path).toLowerCase();
-        if (ext != '.mp4') {
-          _showSnackBar('Only MP4 videos are supported.');
-          return;
-        }
-
-        setState(() {
-          _isProcessing = true;
-        });
-
-        // Create a temporary file to store the video
-        final tempFilePath = await _saveVideoToTemp(video);
-
-        setState(() {
-          _isProcessing = false;
-        });
-
-        // Redirect to the select exercise screen
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ConfigureAnalysisScreen()),
-          );
-        }
-        
-
-      } else {
-        _showSnackBar('Permission denied. Change settings to allow access to videos and images.');
-      }
-    } catch (e) {
-      _showSnackBar('Error picking video: $e');
-    }
-  }
-
-  Future<String> _saveVideoToTemp(XFile video) async {
-    final tempDir = await getTemporaryDirectory();
-    final filePath = path.join(tempDir.path, 'response_${DateTime.now().millisecondsSinceEpoch}.mp4');
-    final file = File(filePath);
-    final bytes = await video.readAsBytes();
-    await file.writeAsBytes(bytes);
-    return filePath;
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
+  final int initialIndex; 
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('SmartPose', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
+      bottomNavigationBar: CustomNavigationBar(initialIndex: initialIndex),
+      body: Padding(
+        padding: const EdgeInsets.all(30),
+        child: SingleChildScrollView(
+          child: 
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const HeroSection(),
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: InkWell(
-                onTap: _isProcessing ? null : _pickAndUploadVideo,
-                borderRadius: BorderRadius.circular(16),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.all(24),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(
-                      color: Colors.grey.shade400,
-                      width: 2,
-                      style: BorderStyle.solid,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.video_library, size: 60, color: Theme.of(context).colorScheme.primary),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Upload your workout video',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Tap to select a video from your gallery. \nSupports MP4, MOV, AVI up to 100MB',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                      const SizedBox(height: 24),
-                      if (_isProcessing)
-                        const CircularProgressIndicator()
-                      else
-                        ElevatedButton.icon(
-                          onPressed: _pickAndUploadVideo,
-                          icon: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.upload, size: 18, color: Colors.white),
-                            ],
-                          ),
-                          label: const Text('Choose Video File', style: TextStyle(color: Colors.white)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.primary,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 16, horizontal: 24),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+            const SizedBox(height: 50),
+            Text('Welcome back! 👋', style: AppTextStyles.screenSuperTitle),
+            const SizedBox(height: 12),
+            Text(
+              'Here\'s your recent exercise feedback.',
+              style: AppTextStyles.screenSubtitle,
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Hero Section with fade-in animation
-class HeroSection extends StatefulWidget {
-  const HeroSection({super.key});
-
-  @override
-  State<HeroSection> createState() => _HeroSectionState();
-}
-
-class _HeroSectionState extends State<HeroSection>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeIn;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    _fadeIn = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final foreground = theme.colorScheme.onSurface;
-    final primary = theme.colorScheme.primary;
-    final muted = Colors.grey.shade600;
-
-    return FadeTransition(
-      opacity: _fadeIn,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-        child: Column(
-          children: [
-            // Title
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Perfect your form\n',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      color: foreground,
-                      height: 1.2,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'with AI guidance',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w800,
-                      color: primary,
-                      shadows: [
-                        Shadow(
-                          offset: const Offset(0, 1),
-                          blurRadius: 4,
-                          color: primary.withValues(alpha: 0.3),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const TextSpan(
-                    text: '\n',
-                  ),
-                  TextSpan(
-                    style: TextStyle(
-                      fontSize: 18,
-                      height: 1.5,
-                      color: muted,
-                    ),
-                    children: const [
-                      TextSpan(
-                        text: '\nUpload a video of your exercise and receive feedback with corrections.',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            const HomeFeedbackBox(
             ),
-
-          ],
+            const SizedBox(height: 30),
+            Text('Recent exercise results', style: AppTextStyles.screenSuperTitle),
+            const SizedBox(height: 20),
+            HomeExerciseBoxes(recentExercises: mockExerciseResults)
+            ],
+          ),
         ),
       ),
     );

@@ -7,32 +7,36 @@ import 'package:my_app/screens/feedback_screen.dart';
 import 'package:my_app/widgets/animated_image_switcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:my_app/screens/home_screen.dart';
 
 final exerciseType = {
   "Squats": "squat",
   "Pull-ups": "pull_up",
-  "Bench Press": "bench_press",
+  "Lateral Raise": "lateral_raise",
+  "Triceps Extension": "triceps_extension",
 };
 
 final requiredVideos = {
   "Squats": [
-    {"id": "front", "label": "Front View", "description": "Film yourself facing the camera"},
     {"id": "side", "label": "Side View", "description": "Film from your left or right side"},
+    {"id": "front", "label": "Front View", "description": "Film yourself facing the camera"},
   ],
   "Pull-ups": [
-    {"id": "front", "label": "Front View", "description": "Film yourself facing the camera"},
-    {"id": "side", "label": "Side View", "description": "Film from your left or right side"},
+    {"id": "back", "label": "Back View", "description": "Film yourself from the back"},
   ],
-  "Bench Press": [
+  "Lateral Raise": [
+    {"id": "front", "label": "Front View", "description": "Film yourself facing the camera"},
+  ],
+  "Triceps Extension": [
     {"id": "side", "label": "Side View", "description": "Film from the side"},
-    {"id": "foot", "label": "Foot View", "description": "Film from the foot end"},
   ],
 };
 
 final exercises = [
     {"name": "Squats", "description": "Lower body strength exercise", "images": ["assets/images/squat1.png", "assets/images/squat2.png"]},
     {"name": "Pull-ups", "description": "Upper body pulling exercise", "images": ["assets/images/pull-up1.png", "assets/images/pull-up2.png"]},
-    {"name": "Bench Press", "description": "Upper body pushing exercise", "images": ["assets/images/bench-press.png"]},
+    {"name": "Lateral Raise", "description": "Upper body pushing exercise", "images": ["assets/images/lateral-raise1.png", "assets/images/lateral-raise2.png"]},
+    {"name": "Triceps Extension", "description": "Upper body pushing exercise", "images": ["assets/images/triceps1.png", "assets/images/triceps2.png"]},
   ];
 
   final analysisSteps = [
@@ -160,6 +164,10 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
           leading: IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: () => setState(() => showUploadScreen = false),
+            style: IconButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              iconSize: 30,
+            ),
           ),
           title: Text("Upload your videos", style: AppTextStyles.screenTitle),
         ),
@@ -214,11 +222,18 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
   // Default: Exercise Selection
     return Scaffold(
     appBar: AppBar(
-      leading: Icon(Icons.sports_gymnastics, size: 30, color: Theme.of(context).colorScheme.primary),
-                  title: Text(
-              "Exercise selection",
-              style: AppTextStyles.screenTitle,
+          leading: IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HomeScreen(initialIndex: 0))),
+            style: IconButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              iconSize: 30,
             ),
+          ),
+          title: Text(
+          "Exercise selection",
+          style: AppTextStyles.screenTitle,
+        ),
       ),
     body: Padding(
       padding: const EdgeInsets.all(16),

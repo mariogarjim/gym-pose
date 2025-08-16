@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 
 class AppTextStyles {
+
+  static TextStyle get screenSuperTitle => TextStyle(
+    fontSize: 30,
+    fontWeight: FontWeight.bold,
+    color: Colors.grey[800],
+    letterSpacing: 0.5,
+    height: 1.3,
+  );
+
   static TextStyle get screenTitle => TextStyle(
     fontSize: 24,
     fontWeight: FontWeight.bold,

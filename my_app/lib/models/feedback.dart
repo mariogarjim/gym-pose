@@ -70,3 +70,49 @@ class ImprovementPoint {
     };
   }
 }
+
+
+class ExerciseResult {
+  final String id;
+  final String name;
+  final DateTime date;
+  final int grade;
+  final List<String> goodPoints;
+  final List<String> improvements;
+
+  ExerciseResult({
+    required this.id,
+    required this.name,
+    required this.date,
+    required this.grade,
+    required this.goodPoints,
+    required this.improvements,
+  });
+}
+
+final mockExerciseResults = [
+  ExerciseResult(
+    id: '1',
+    name: 'Squat',
+    date: DateTime.now(),
+    grade: 85,
+    goodPoints: ['Good depth in the squat movement', 'Knees properly aligned with toes', 'Maintained neutral spine throughout'],
+    improvements: ['Try to distribute your weight evenly between your feet', 'Keep your head aligned with your spine', 'Keep your head aligned with your spine'],
+  ),
+  ExerciseResult(
+    id: '2',
+    name: 'Push-up',
+    date: DateTime.now(),
+    grade: 75,
+    goodPoints: ['Good depth in the push-up movement', 'Knees properly aligned with toes', 'Maintained neutral spine throughout'],
+    improvements: ['Try to distribute your weight evenly between your feet', 'Keep your head aligned with your spine', 'Keep your head aligned with your spine'],
+  ),
+  ExerciseResult(
+    id: '3',
+    name: 'Pull-up',
+    date: DateTime.now(),
+    grade: 90,
+    goodPoints: ['Good depth in the pull-up movement', 'Knees properly aligned with toes', 'Maintained neutral spine throughout'],
+    improvements: ['Try to distribute your weight evenly between your feet', 'Keep your head aligned with your spine', 'Keep your head aligned with your spine'],
+  ),
+];

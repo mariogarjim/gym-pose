@@ -72,6 +72,10 @@ flutter:
     - assets/images/pull-up1.png
     - assets/images/pull-up2.png
     - assets/images/bench-press.png
+    - assets/images/lateral-raise1.png
+    - assets/images/lateral-raise2.png
+    - assets/images/triceps1.png
+    - assets/images/triceps2.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
