@@ -1,10 +1,12 @@
+import io
+import tempfile
+import zipfile
 import os
 import typing as t
 import uuid
 
 import boto3
 import numpy as np
-from fastapi import HTTPException, UploadFile
 
 from app.api.api_v2.schemas.exercise import (
     FinalEvaluation,
@@ -25,9 +27,38 @@ class PoseEvaluationService:
         self.video_services: t.List[VideoService] = []
         self.s3_client = boto3.client("s3")
 
+    def unzip_videos_to_temp(self, zip_bytes: bytes) -> list[str]:
+        """
+        Unzips a ZIP file from bytes into unique temporary directories.
+        Returns a list of paths to the extracted video files.
+        """
+        extracted_files = []
+
+        # Create a unique temporary directory
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+                z.extractall(tmpdir)
+
+            # Walk through and collect all files
+            for root, _, files in os.walk(tmpdir):
+                for filename in files:
+                    file_path = os.path.join(root, filename)
+                    extracted_files.append(file_path)
+
+            # Here tmpdir will be deleted when this function ends
+            # If you want to keep files longer, copy them into /tmp
+            # (Lambda has /tmp with 512MB–10GB space)
+            final_paths = []
+            for f in extracted_files:
+                dest_path = os.path.join("/tmp", os.path.basename(f))
+                os.rename(f, dest_path)  # or shutil.copy if you want to keep original
+                final_paths.append(dest_path)
+
+            return final_paths
+
     def evaluate_pose(
         self,
-        files: t.Union[t.List[UploadFile], t.List[str]],
+        file_content: bytes,
         user_id: str,
         exercise_type: ExerciseEnum,
     ) -> OutputPose:
@@ -42,19 +73,9 @@ class PoseEvaluationService:
             dict[ExerciseMeasureEnum, list[np.ndarray]]
         ] = []
 
-        if isinstance(files, list) and all(
-            isinstance(file, UploadFile) for file in files
-        ):
-            for file in files:
-                if not file.content_type.startswith("video/"):
-                    raise HTTPException(status_code=400, detail="File must be a video")
+        video_paths = self.unzip_videos_to_temp(file_content)
 
-        for file, viewpoint in zip(files, HARDCODED_VIEWPOINTS):
-            if isinstance(file, UploadFile):
-                video_path = VideoServiceFactory.save_to_temp_file(file)
-            else:
-                video_path = file
-
+        for video_path, viewpoint in zip(video_paths, HARDCODED_VIEWPOINTS):
             video_service = VideoServiceFactory.get_video_service(video_path, viewpoint)
             self.video_services.append(video_service)
 
@@ -86,16 +107,9 @@ class PoseEvaluationService:
         print(f"output_feedback: {output_feedback}")
 
         zip_buffer = VideoServiceFactory.process_videos_response(output_video_paths)
-        processed_key = f"processed/{user_id}/{exercise_type.value}/{uuid.uuid4()}.zip"
-
-        self.s3_client.put_object(
-            Bucket=os.getenv("S3_BUCKET_NAME"),
-            Key=processed_key,
-            Body=zip_buffer,
-        )
 
         print("Returning streaming response")
         return OutputPose(
-            key=processed_key,
-            url=f"https://{os.getenv('S3_BUCKET_NAME')}.s3.amazonaws.com/{processed_key}",
+            feedback=output_feedback,
+            videos=zip_buffer.getvalue(),
         )

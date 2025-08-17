@@ -68,28 +68,24 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # 5. Update DynamoDB with analysis results
 
                     # Placeholder: Update DynamoDB with processing status
-                    # response = table.put_item(
-                    #    Item={
-                    #        "pk": f"video#{key}",
-                    #        "sk": f"user#{user_id}",
-                    #        "status": AnalysisStatus.PROCESSING.value,
-                    #        "bucket": bucket,
-                    #        "key": key,
-                    #        "timestamp": context.aws_request_id,
-                    #    }
-                    # )
+                    response = table.put_item(
+                        Item={
+                            "pk": f"video#{key}",
+                            "sk": f"user#{user_id}",
+                            "status": AnalysisStatus.PROCESSING.value,
+                            "bucket": bucket,
+                            "key": key,
+                            "timestamp": context.aws_request_id,
+                        }
+                    )
 
-                    # Download the video file to /tmp (commented out for testing)
-                    local_file_path = f"/tmp/{os.path.basename(key)}"
-                    print(f"Would download {bucket}/{key} to {local_file_path}")
-                    # s3_client.download_file(bucket, key, local_file_path)
-
-                    # Set environment variable that the service expects
-                    os.environ["S3_BUCKET_NAME"] = bucket_name
+                    # Get the file in memory
+                    object = s3_client.get_object(Bucket=bucket, Key=key)
+                    file_content = object["Body"].read()
 
                     # Call the pose evaluation service
                     output_pose = pose_evaluation_service.evaluate_pose(
-                        files=[local_file_path],  # Pass as list of file paths
+                        file_content=file_content,
                         exercise_type=exercise_type,
                         user_id=user_id,
                     )
