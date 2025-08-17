@@ -1,0 +1,16 @@
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.venv/
+node_modules/
+*.mp4
+*.zip
+*.log
+/architecture/cdk.out/
+/test/
+/uploads/
+/venv/
+/.env/
+.gitignore
+alembic.ini
+README.md

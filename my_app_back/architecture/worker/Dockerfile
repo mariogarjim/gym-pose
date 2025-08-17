@@ -9,10 +9,14 @@ RUN dnf install -y tar xz && dnf clean all && \
     ln -s /opt/ffmpeg/ffprobe /usr/local/bin/ffprobe && \
     rm /tmp/ffmpeg.tar.xz
 
-# Python deps
-COPY requirements.txt ./
+# Copy the code
+COPY . ${LAMBDA_TASK_ROOT}
+
+# Copy and install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
-# Código
-COPY worker_lambda_function.py ${LAMBDA_TASK_ROOT}/
-CMD ["worker_lambda_function.lambda_handler"]
+# OpenCV system dependencies
+RUN dnf install -y mesa-libGL mesa-libGLU libX11 && dnf clean all
+
+
+CMD ["architecture/worker/worker_lambda_function.lambda_handler"]
