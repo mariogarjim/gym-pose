@@ -71,12 +71,23 @@ export class ArchitectureStack extends cdk.Stack {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, '..', '..'), {
         file: 'architecture/worker/Dockerfile',
       }),
-      memorySize: 2048, // ajusta según tu modelo
+      memorySize: 4096, // ajusta según tu modelo
       timeout: Duration.minutes(10),
       architecture: lambda.Architecture.X86_64,
       environment: {
         BUCKET: videoBucket.bucketName,
         TABLE: analysesTable.tableName,
+
+        // Avoid spikes and saturation by threads
+        OMP_NUM_THREADS: '1',
+        OPENBLAS_NUM_THREADS: '1',
+        NUMEXPR_NUM_THREADS: '1',
+        TF_NUM_INTRAOP_THREADS: '1',
+        TF_NUM_INTEROP_THREADS: '1',
+
+        // Silence TF logs and write matplotlib warnings into a writable directory
+        TF_CPP_MIN_LOG_LEVEL: '2',
+        MPLCONFIGDIR: '/tmp/mpl',
       },
       ephemeralStorageSize: Size.gibibytes(10),
       loggingFormat: lambda.LoggingFormat.JSON,
