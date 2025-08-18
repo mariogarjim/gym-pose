@@ -71,7 +71,7 @@ export class ArchitectureStack extends cdk.Stack {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, '..', '..'), {
         file: 'architecture/worker/Dockerfile',
       }),
-      memorySize: 4096, // ajusta según tu modelo
+      memorySize: 3008, // ajusta según tu modelo
       timeout: Duration.minutes(10),
       architecture: lambda.Architecture.X86_64,
       environment: {
