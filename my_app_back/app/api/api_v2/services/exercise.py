@@ -105,9 +105,6 @@ class ExerciseSquad(BaseExerciseService):
 
         # [SQUAD-02] Squad depth:
         depth = hip[1] - knee[1]
-        # Create a txt file with the depth and frame
-        with open("depth.txt", "a") as f:
-            f.write(f"depth: {depth} frame: {frame}\n")
         copy_frame_img = frame_img.copy()
         draw_squad_depth(copy_frame_img, hip, knee, depth, frame)
         self.videos[ExerciseMeasureEnum.SQUAT_DEPTH].append(copy_frame_img)
