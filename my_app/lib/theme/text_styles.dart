@@ -1,4 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+  
+class AppTextStylesV2 {
+  static TextStyle get exerciseNames => GoogleFonts.inter(
+    fontWeight: FontWeight.w800,
+    fontSize: 20,
+    color: Colors.black,
+  );
+}
 
 class AppTextStyles {
 

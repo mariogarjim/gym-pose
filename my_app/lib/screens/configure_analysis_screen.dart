@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:my_app/theme/text_styles.dart';
 import 'package:my_app/core/api/video_upload_service.dart';
 import 'package:my_app/screens/feedback_screen.dart';
-import 'package:my_app/widgets/animated_image_switcher.dart';
+import 'package:my_app/widgets/exercise_image_switcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:my_app/screens/home_screen.dart';
@@ -26,9 +26,6 @@ final requiredVideos = {
   ],
   "Lateral Raise": [
     {"id": "front", "label": "Front View", "description": "Film yourself facing the camera"},
-  ],
-  "Triceps Extension": [
-    {"id": "side", "label": "Side View", "description": "Film from the side"},
   ],
 };
 
@@ -283,10 +280,13 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
                         Expanded(
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                            child: AnimatedImageSwitcher(
-                              exerciseName: exercise['name'] as String,
-                              isSelected: isSelected,
-                              exerciseImages: exercise['images'] as List<String>,
+                            child: ExerciseImageSwitcher(
+                              first: exercise['images']! as String,
+                              second: exercise['images']! as String,
+                              play: isSelected,
+                              height: 145,
+                              interval: const Duration(milliseconds: 700),
+                              fadeDuration: const Duration(milliseconds: 250),
                             ),
                           ),
                         )
