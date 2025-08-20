@@ -1,7 +1,7 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
+import 'package:my_app/app_shell.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
@@ -24,7 +24,7 @@ class MyApp extends StatelessWidget {
         fontFamily: GoogleFonts.inter().fontFamily,
       ),
       debugShowCheckedModeBanner: false,
-      home: const HomeScreen(),
+      home: const AppShell(initialIndex: 0),
     );
   }
 }

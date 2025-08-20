@@ -2,11 +2,57 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
   
 class AppTextStylesV2 {
+
+  static TextStyle get screenSuperTitle => GoogleFonts.inter(
+    fontWeight: FontWeight.w800,
+    fontSize: 24,
+    color: Colors.black,
+  );
+
   static TextStyle get exerciseNames => GoogleFonts.inter(
     fontWeight: FontWeight.w800,
     fontSize: 20,
     color: Colors.black,
   );
+
+  static TextStyle get screenTitle => GoogleFonts.inter(
+    fontWeight: FontWeight.w600,
+    fontSize: 24,
+    color: Colors.black,
+  );
+
+  static TextStyle get textBody => GoogleFonts.inter(
+    fontWeight: FontWeight.w400,
+    fontSize: 20,
+    color: Colors.black,
+  );
+
+  static TextStyle get textBodyGrey => GoogleFonts.inter(
+    fontWeight: FontWeight.w400,
+    fontSize: 20,
+    color: Colors.grey[800],
+  );
+
+  static TextStyle get requirementLabel => GoogleFonts.inter(
+        fontWeight: FontWeight.w700,
+        fontSize: 16,
+        color: Colors.black,
+      );
+
+  static TextStyle get requirementDescription => GoogleFonts.inter(
+        fontWeight: FontWeight.w400,
+        fontSize: 14,
+        color: Colors.black87,
+      );
+
+  static TextStyle get requirementHint => GoogleFonts.inter(
+        fontWeight: FontWeight.w400,
+        fontSize: 12,
+        color: Colors.grey,
+      );
+
+  
+  
 }
 
 class AppTextStyles {

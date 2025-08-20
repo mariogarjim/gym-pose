@@ -14,7 +14,6 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
 
     return Scaffold(
-      bottomNavigationBar: CustomNavigationBar(initialIndex: initialIndex),
       body: Padding(
         padding: const EdgeInsets.all(30),
         child: SingleChildScrollView(
@@ -24,17 +23,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             const SizedBox(height: 50),
             Text('Welcome back! 👋', style: AppTextStyles.screenSuperTitle),
-            const SizedBox(height: 12),
-            Text(
-              'Here\'s your recent exercise feedback.',
-              style: AppTextStyles.screenSubtitle,
-            ),
-            const HomeFeedbackBox(
-            ),
-            const SizedBox(height: 30),
-            Text('Recent exercise results', style: AppTextStyles.screenSuperTitle),
-            const SizedBox(height: 20),
-            HomeExerciseBoxes(recentExercises: mockExerciseResults)
+            
             ],
           ),
         ),

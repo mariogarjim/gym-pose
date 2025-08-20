@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/custom_upper_bar.dart';
 import 'package:my_app/screens/upload_video_screen.dart';  
 import 'package:my_app/theme/text_styles.dart'; 
 import 'package:my_app/widgets/exercise_image_switcher.dart';
@@ -40,7 +39,6 @@ class _ExerciseSelectionScreenState extends State<ExerciseSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const CustomUpperBar(),
       backgroundColor: Colors.white,
       body: Column(
         children: [

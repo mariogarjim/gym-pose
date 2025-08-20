@@ -30,10 +30,10 @@ final requiredVideos = {
 };
 
 final exercises = [
-    {"name": "Squats", "description": "Lower body strength exercise", "images": ["assets/images/squat1.png", "assets/images/squat2.png"]},
-    {"name": "Pull-ups", "description": "Upper body pulling exercise", "images": ["assets/images/pull-up1.png", "assets/images/pull-up2.png"]},
-    {"name": "Lateral Raise", "description": "Upper body pushing exercise", "images": ["assets/images/lateral-raise1.png", "assets/images/lateral-raise2.png"]},
-    {"name": "Triceps Extension", "description": "Upper body pushing exercise", "images": ["assets/images/triceps1.png", "assets/images/triceps2.png"]},
+    {"name": "Squats", "description": "Lower body strength exercise", "image1": "assets/images/squat1.png", "image2": "assets/images/squat2.png"},
+    {"name": "Pull-ups", "description": "Upper body pulling exercise", "image1": "assets/images/pull-up1.png", "image2": "assets/images/pull-up2.png"},
+    {"name": "Lateral Raise", "description": "Upper body pushing exercise", "image1": "assets/images/lateral-raise1.png", "image2": "assets/images/lateral-raise2.png"},
+    {"name": "Triceps Extension", "description": "Upper body pushing exercise", "image1": "assets/images/triceps1.png", "image2": "assets/images/triceps2.png"},
   ];
 
   final analysisSteps = [
@@ -281,11 +281,11 @@ class _ConfigureAnalysisScreenState extends State<ConfigureAnalysisScreen> {
                           child: ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
                             child: ExerciseImageSwitcher(
-                              first: exercise['images']! as String,
-                              second: exercise['images']! as String,
+                              first: exercise['image1'] as String,
+                              second: exercise['image2'] as String,
                               play: isSelected,
                               height: 145,
-                              interval: const Duration(milliseconds: 700),
+                              interval: const Duration(milliseconds: 500),
                               fadeDuration: const Duration(milliseconds: 250),
                             ),
                           ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/screens/configure_analysis_screen.dart';
 import 'package:my_app/screens/home_screen.dart';
 import 'package:my_app/screens/exercise_selection_screen.dart';
+import 'package:my_app/screens/feedback_exercise_selection.dart';
 
 class CustomNavigationBar extends StatefulWidget {
   const CustomNavigationBar({super.key, this.initialIndex = 0});
@@ -25,7 +25,7 @@ class CustomNavigationBarState extends State<CustomNavigationBar> {
   final Map<int, Widget> _pages = {
     0: const HomeScreen(),
     1: const ExerciseSelectionScreen(),
-    2: const ConfigureAnalysisScreen(),
+    2: const FeedbackExerciseSelection(),
   };
 
   void _onItemTapped(int index) {
@@ -34,9 +34,8 @@ class CustomNavigationBarState extends State<CustomNavigationBar> {
         return;
       }
       _selectedIndex = index;
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => _pages[index]!),
+      Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute(builder: (_) => _pages[index]!),
       );
     });
   }  
