@@ -78,21 +78,14 @@ class AppShellState extends State<AppShell> {
 
     // Hide ALL chrome on tab 1
     final bool hideChrome = _currentIndex == 1;
+    PreferredSizeWidget? appBar;
 
     // 👇 Decide which (if any) AppBar to show
-    PreferredSizeWidget? appBar;
-    if (hideChrome) {
-      appBar = null; // tab 1: full-screen, no app bar
-    } else if (_currentIndex == 0) {
-      appBar = null; // tab 0 (Home): no app bar
-    }
-
     if (_currentIndex == 1 ) {
-      if (_textToShow != "") {
-        appBar = const CustomUpperBar(title: 'EXERCISES');
-      } else {
         appBar = const CustomUpperBar();
-      }
+    }
+    else if (_currentIndex == 2) {
+      appBar = const CustomUpperBar(title: 'ANALYSIS', returnButton: false,);
     }
 
     return PopScope(
@@ -133,7 +126,10 @@ class AppShellState extends State<AppShell> {
         floatingActionButton: hideChrome
             ? null
             : FloatingActionButton(
-                onPressed: () => _selectTab(1),
+                onPressed: () {
+                  _navKeys[1].currentState?.popUntil((route) => route.isFirst);
+                  _selectTab(1);
+                },
                 backgroundColor: Colors.black,
                 foregroundColor: Colors.white,
                 elevation: 0,

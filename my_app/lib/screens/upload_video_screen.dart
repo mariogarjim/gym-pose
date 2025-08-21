@@ -275,7 +275,6 @@ Widget build(BuildContext context) {
             ? () {
                     final shell = AppShell.of(context);
                     shell?.setTextToShow(_exerciseName);
-
                     // ✅ push inside tab 2 so the navbar stays and AppShell is the ancestor
                     shell?.pushOnTab(
                       2,
