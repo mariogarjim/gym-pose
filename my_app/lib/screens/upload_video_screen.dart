@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:my_app/theme/text_styles.dart';
-import 'package:my_app/screens/feedback_exercise_selection.dart';
+import 'package:my_app/screens/feedback_exercise_selection_screen.dart';
 import 'package:my_app/app_shell.dart';
 
 final requiredVideos = {
@@ -279,7 +279,7 @@ Widget build(BuildContext context) {
                     shell?.pushOnTab(
                       2,
                       MaterialPageRoute(
-                        builder: (_) => FeedbackExerciseSelection(exerciseName: _exerciseName),
+                        builder: (_) => FeedbackExerciseSelectionsScreen(exerciseName: _exerciseName),
                       ),
                     );
                   }

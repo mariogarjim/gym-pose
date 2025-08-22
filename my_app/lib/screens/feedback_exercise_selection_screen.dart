@@ -1,7 +1,9 @@
 // lib/screens/feedback_exercise_selection.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:my_app/screens/feedback_exercise_screen.dart';
 import 'package:my_app/theme/text_styles.dart';
+import 'package:my_app/app_shell.dart';
 
 final List<Map<String, dynamic>> mockAnalysis = [
   {
@@ -22,8 +24,8 @@ final List<Map<String, dynamic>> mockAnalysis = [
   },
 ];
 
-class FeedbackExerciseSelection extends StatelessWidget {
-  const FeedbackExerciseSelection({
+class FeedbackExerciseSelectionsScreen extends StatelessWidget {
+  const FeedbackExerciseSelectionsScreen({
     super.key,
     this.exerciseName = '',   // <-- add this
   });
@@ -48,17 +50,35 @@ class FeedbackExerciseSelection extends StatelessWidget {
                   '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
               final bool isDimmed = name.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '') == 'pullups'; // dim only Pull Ups items
 
-              return Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
+              return GestureDetector(
+                onTap: isDimmed ? () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text("Your videos are being analysed by our AI models. This process may take a few minutes.", style: AppTextStylesV2.requirementDescription,),
+                    ),
+                  );
+                } : () {
+                  final shell = AppShell.of(context);
+                  shell?.setTextToShow(name);
+                  shell?.pushOnTab(
+                    2,
+                    MaterialPageRoute(
+                      builder: (_) => FeedbackExerciseScreen(exerciseName: name),
+                    ),
+                  );
+                },
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
                           Container(
                             width: 90,
                             height: 90,
@@ -78,16 +98,15 @@ class FeedbackExerciseSelection extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(name, style: AppTextStylesV2.requirementLabel),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 4),
                                 Text(dateStr, style: AppTextStylesV2.requirementDescription),
-                                Text('Keep 1, Warning 0, Error 0', style: AppTextStylesV2.requirementDescription),
                               ],
                             ),
                           ),
-                          isDimmed ? const SizedBox.shrink() : const Icon(Icons.chevron_right),
-                        ],
+                            isDimmed ? const Icon(Icons.info_outline) : const Icon(Icons.chevron_right),
+                          ],
+                        ),
                       ),
-                    ),
                     if (isDimmed)
                       Positioned.fill(
                         child: Container(
@@ -106,7 +125,8 @@ class FeedbackExerciseSelection extends StatelessWidget {
                           ),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },

@@ -45,6 +45,12 @@ class AppTextStylesV2 {
         color: Colors.black87,
       );
 
+  static TextStyle get tooltipText => GoogleFonts.inter(
+    fontWeight: FontWeight.w400,
+        fontSize: 16,
+        color: Colors.black87,
+      );
+
   static TextStyle get requirementHint => GoogleFonts.inter(
         fontWeight: FontWeight.w400,
         fontSize: 12,

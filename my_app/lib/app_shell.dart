@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // Your tab root screens (content-only widgets)
 import 'package:my_app/screens/home_screen.dart';
 import 'package:my_app/screens/exercise_selection_screen.dart';
-import 'package:my_app/screens/feedback_exercise_selection.dart';
+import 'package:my_app/screens/feedback_exercise_selection_screen.dart';
 import 'package:my_app/custom_upper_bar.dart';
 
 class AppShell extends StatefulWidget {
@@ -41,6 +41,8 @@ class AppShellState extends State<AppShell> {
     return await _navKeys[_currentIndex].currentState?.maybePop() ?? false;
   }
 
+  int get currentIndex => _currentIndex;
+
   @override
   void initState() {
     super.initState();
@@ -77,7 +79,7 @@ class AppShellState extends State<AppShell> {
     const selected = Colors.black;
 
     // Hide ALL chrome on tab 1
-    final bool hideChrome = _currentIndex == 1;
+    bool hideChrome = _currentIndex == 1;
     PreferredSizeWidget? appBar;
 
     // 👇 Decide which (if any) AppBar to show
@@ -85,8 +87,12 @@ class AppShellState extends State<AppShell> {
         appBar = const CustomUpperBar();
     }
     else if (_currentIndex == 2) {
-      appBar = const CustomUpperBar(title: 'ANALYSIS', returnButton: false,);
-    }
+      appBar = CustomUpperBar(
+        title: _textToShow.isEmpty ? 'ANALYSIS' : _textToShow,
+        returnButton: _textToShow == 'ANALYSIS' ? false : true,   
+      );
+      hideChrome = _textToShow != 'ANALYSIS';
+  }
 
     return PopScope(
       canPop: false,
@@ -118,7 +124,7 @@ class AppShellState extends State<AppShell> {
           children: [
             _buildTabNavigator(_navKeys[0], const HomeScreen()),
             _buildTabNavigator(_navKeys[1], const ExerciseSelectionScreen()),
-            _buildTabNavigator(_navKeys[2], const FeedbackExerciseSelection()),
+            _buildTabNavigator(_navKeys[2], const FeedbackExerciseSelectionsScreen()),
           ],
         ),
 

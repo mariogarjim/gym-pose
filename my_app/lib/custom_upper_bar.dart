@@ -18,13 +18,18 @@ class CustomUpperBar extends StatelessWidget implements PreferredSizeWidget {
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios_new),
               onPressed: () async {
+                
                 // 1) Try to pop inside the CURRENT TAB navigator (owned by AppShell)
                 final shell = AppShell.of(context);
+
+                if (shell?.currentIndex == 2) {
+                  shell?.setTextToShow("ANALYSIS");
+                }
+
                 final nearestNavigator = Navigator.of(context);
                 final root = Navigator.of(context, rootNavigator: true);
 
                 final didPopTab = await (shell?.popCurrentTab() ?? Future<bool>.value(false));
-                print("didPopTab: $didPopTab");
                 if (didPopTab) return;
 
                 // 2) Try the nearest (page) navigator

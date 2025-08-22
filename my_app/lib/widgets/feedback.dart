@@ -4,7 +4,7 @@ import 'package:my_app/screens/configure_analysis_screen.dart';
 import 'package:my_app/theme/text_styles.dart';
 import 'package:my_app/widgets/progress_score.dart';
 import 'package:my_app/widgets/text_separator.dart';
-import 'package:my_app/widgets/square_video_player.dart';
+import 'package:my_app/widgets/video_player.dart';
 
 Widget buildHeader(String exercise, BuildContext context) {
   return Padding(
@@ -75,7 +75,7 @@ Widget buildImprovements(List<ImprovementPoint> improvements, BuildContext conte
               child: Text('${improvement.key+1}. ${improvement.value.title}', style: AppTextStyles.screenSubtitleBlack, textAlign: TextAlign.left,),
             ),
             const SizedBox(height: 15),
-            SquareVideoPlayer(videoPath: improvement.value.videoPath, severity: improvement.value.severity),  
+            AdaptiveAspectVideoPlayer(videoPath: improvement.value.videoPath, severity: improvement.value.severity),  
             const SizedBox(height: 15),
             Text(improvement.value.feedback, style: AppTextStyles.screenSubtitle, textAlign: TextAlign.center,),
             const SizedBox(height: 30),
