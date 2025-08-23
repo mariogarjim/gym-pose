@@ -23,7 +23,7 @@ class CustomUpperBar extends StatelessWidget implements PreferredSizeWidget {
                 final shell = AppShell.of(context);
 
                 if (shell?.currentIndex == 2) {
-                  shell?.setTextToShow("ANALYSIS");
+                  shell?.setTextToShow("RESULTS");
                 }
 
                 final nearestNavigator = Navigator.of(context);

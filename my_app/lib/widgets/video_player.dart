@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:my_app/app_shell.dart';
 import 'package:video_player/video_player.dart';
 
 /// Video vertical adaptable que calcula su tamaño según:
@@ -88,26 +89,34 @@ class _AdaptiveAspectVideoPlayerState extends State<AdaptiveAspectVideoPlayer> {
   }
 
   Future<void> _openFullscreen() async {
-    // Forzamos landscape y UI inmersiva durante el fullscreen.
-    
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Go immersive and lock to portrait
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
 
-    if (!mounted) return;
+  if (!mounted) return;
 
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => _FullscreenScaffold(controller: _controller),
-      ),
-    );
+  final shell = AppShell.of(context);
+  shell?.setFullScreen(true);
 
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  await Navigator.of(context).push<void>(
+    MaterialPageRoute<void>(
+      
+      builder: (_) => _FullscreenScaffold(controller: _controller),
+    ),
+  );
 
-    if (mounted) {
-      setState(() {
-        _isPlaying = _controller.value.isPlaying;
-      });
-    }
+  // Restore UI + orientation
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+
+  if (mounted) {
+    setState(() {
+      _isPlaying = _controller.value.isPlaying;
+    });
   }
+}
 
   @override
   void dispose() {
@@ -209,10 +218,46 @@ class _AdaptiveAspectVideoPlayerState extends State<AdaptiveAspectVideoPlayer> {
 
 /// Ejemplo sencillo de pantalla fullscreen reutilizando el mismo controller.
 /// (Puedes sustituirlo por tu FullScreenVideoPage si lo prefieres.)
-class _FullscreenScaffold extends StatelessWidget {
+class _FullscreenScaffold extends StatefulWidget {
   const _FullscreenScaffold({required this.controller});
-
   final VideoPlayerController controller;
+
+  @override
+  State<_FullscreenScaffold> createState() => _FullscreenScaffoldState();
+}
+
+class _FullscreenScaffoldState extends State<_FullscreenScaffold> {
+  late final VideoPlayerController _controller = widget.controller;
+  bool _isPlaying = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _isPlaying = _controller.value.isPlaying;
+    _controller.addListener(_onTick);
+  }
+
+  void _onTick() {
+    if (!mounted || !_controller.value.isInitialized) return;
+    final p = _controller.value.isPlaying;
+    if (p != _isPlaying) setState(() => _isPlaying = p);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onTick);
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    if (!_controller.value.isInitialized) return;
+    if (_controller.value.isPlaying) {
+      await _controller.pause();
+    } else {
+      await _controller.play();
+    }
+    // Listener will update _isPlaying
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -220,14 +265,49 @@ class _FullscreenScaffold extends StatelessWidget {
       backgroundColor: Colors.black,
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => Navigator.of(context).pop(),
-        child: Center(
-          child: AspectRatio(
-            aspectRatio: controller.value.aspectRatio == 0
-                ? 16 / 9
-                : controller.value.aspectRatio,
-            child: VideoPlayer(controller),
-          ),
+        onTap: _toggle, // ⬅️ toggle instead of pop
+        child: Stack(
+          children: [
+            Center(
+              child: AspectRatio(
+                aspectRatio: (_controller.value.aspectRatio == 0)
+                    ? 16 / 9
+                    : _controller.value.aspectRatio,
+                child: VideoPlayer(_controller),
+              ),
+            ),
+            // Play overlay
+            IgnorePointer(
+              ignoring: true,
+              child: AnimatedOpacity(
+                opacity: _isPlaying ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 180),
+                child: const Center(
+                  child: Icon(Icons.play_arrow, color: Colors.white, size: 96),
+                ),
+              ),
+            ),
+            // Close button (explicit exit)
+            Positioned(
+              top: 40,
+              left: 12,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () {
+                    final shell = AppShell.of(context);
+                    shell?.setFullScreen(false);
+                    Navigator.of(context).pop();
+                  },
+                  tooltip: 'Close',
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

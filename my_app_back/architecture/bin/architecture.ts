@@ -3,7 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { ArchitectureStack } from '../lib/architecture-stack';
 
 const app = new cdk.App();
-const env = { account: '860044295834', region: 'eu-central-1' };
+const env = { account: '860044295834', region: 'eu-west-1' };
 new ArchitectureStack(app, 'ArchitectureStack', {
   env,
   /* If you don't specify 'env', this stack will be environment-agnostic.

@@ -8,19 +8,18 @@ import 'package:my_app/app_shell.dart';
 final List<Map<String, dynamic>> mockAnalysis = [
   {
     "exerciseName": "Lateral Raise",
-    "date": DateTime.now(),
-    "imageAssetPath": "assets/images/lateral-raise1.png",
+    "date": "25-12-2024",
+    "exerciseRating": 90,
   },
   {
     "exerciseName": "Squats",
-    "date": DateTime.now(),
-    "imageAssetPath": "assets/images/squat1.png",
+    "date": "22-05-2024",
+    "exerciseRating": 20,
   },
-  
   {
     "exerciseName": "Pull Ups",
-    "date": DateTime.now(),
-    "imageAssetPath": "assets/images/pull-up1.png",
+    "date": "20-11-2024",
+    "exerciseRating": 50,
   },
 ];
 
@@ -31,6 +30,19 @@ class FeedbackExerciseSelectionsScreen extends StatelessWidget {
   });
 
   final String exerciseName;  // <-- and this
+
+  Color getCircleColor(exerciseRating) {
+    // Interpolate between red → yellow → green
+    double t = (exerciseRating.clamp(0, 100)) / 100.0;
+
+    if (t < 0.5) {
+      // From red (0) to yellow (50)
+      return Color.lerp(Colors.red, Colors.yellow, t * 2)!;
+    } else {
+      // From yellow (50) to green (100)
+      return Color.lerp(Colors.yellow, Colors.green, (t - 0.5) * 2)!;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,10 +56,8 @@ class FeedbackExerciseSelectionsScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = mockAnalysis[index];
               final String name = (item['exerciseName'] as String?) ?? '';
-              final DateTime date = (item['date'] as DateTime?) ?? DateTime.now();
-              //final String imagePath = (item['imageAssetPath'] as String?) ?? '';
-              final String dateStr =
-                  '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
+              final String dateStr = (item['date'] as String?) ?? '';
+              final int exerciseRating = item['exerciseRating'] as int? ?? 0;
               final bool isDimmed = name.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '') == 'pullups'; // dim only Pull Ups items
 
               return GestureDetector(
@@ -79,17 +89,24 @@ class FeedbackExerciseSelectionsScreen extends StatelessWidget {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                          Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: index % 3 == 0
-                                  ? const Color(0xFFEAEAEA)
-                                  : index % 3 == 1
-                                      ? const Color(0xFFD1FAE5)
-                                      : const Color(0xFFDBEAFE),
-                              borderRadius: BorderRadius.circular(8),
+                          isDimmed ? Container(
+                            width: 100,
+                            height: 100,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
                             ),
+                          ) : Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(100),
+                              border: Border.all(
+                                color: getCircleColor(exerciseRating),
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(child: Text(exerciseRating.toString(), style: AppTextStylesV2.exerciseFeedbackRating(getCircleColor(exerciseRating)))),
                           ),
                           const SizedBox(width: 20),
                           Expanded(
@@ -110,8 +127,8 @@ class FeedbackExerciseSelectionsScreen extends StatelessWidget {
                     if (isDimmed)
                       Positioned.fill(
                         child: Container(
-                          color: Colors.grey[600]!.withValues(alpha: 0.25),
-                          alignment: Alignment.center,
+                          color: Colors.grey[600]!.withValues(alpha: 0.15),
+                          alignment: Alignment.topLeft,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(

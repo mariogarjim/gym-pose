@@ -13,7 +13,7 @@ class FeedbackExerciseScreen extends StatelessWidget {
       length: 3,
       child: Builder(
         builder: (BuildContext context) {
-          final TabController controller = DefaultTabController.of(context)!;
+           final TabController controller = DefaultTabController.of(context);
 
           return AnimatedBuilder(
             // Si TabController.animation es null, usamos el propio controller como Listenable
@@ -25,10 +25,10 @@ class FeedbackExerciseScreen extends StatelessWidget {
               return Stack(
                 children: <Widget>[
                   // ── LED laterales (detrás del contenido) ───────────────────
-                  Positioned.fill(
+                  const Positioned.fill(
                     child: IgnorePointer(
                       child: Row(
-                        children: const <Widget>[
+                        children: <Widget>[
                           // placeholder para mantener estructura con Expanded central
                         ],
                       ),
@@ -69,7 +69,7 @@ class FeedbackExerciseScreen extends StatelessWidget {
                                 _FeedbackItem(
                                   title: 'BACK POSTURE',
                                   description:
-                                      'The angle of your back is correct, please continue like this',
+                                      'The position of you back is not correct. Your back should be straight. Check the video to see the problem.',
                                 ),
                                 _FeedbackItem(
                                   title: 'DEPTH',
@@ -184,23 +184,23 @@ class _FeedbackList extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             // Player adaptable (centrado, 5:4 o lo que uses en tu widget)
-            const AdaptiveAspectVideoPlayer(
-              videoPath: 'assets/videos/vertical.mp4',
-              severity: 'harmful',
-            ),
-            const SizedBox(height: 20),
             Text(
               item.title,
               style: AppTextStylesV2.exerciseNames,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            const AdaptiveAspectVideoPlayer(
+              videoPath: 'assets/videos/vertical.mp4',
+              severity: 'harmful',
+            ),
+            const SizedBox(height: 17),
             Text(
               item.description,
               style: AppTextStylesV2.textBody,
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.justify,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
           ],
         );
       },

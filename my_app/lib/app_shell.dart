@@ -19,6 +19,8 @@ class AppShell extends StatefulWidget {
 class AppShellState extends State<AppShell> {
   late int _currentIndex;
   late String _textToShow;
+  late bool _fullScreen;  
+
   final _navKeys = [
     GlobalKey<NavigatorState>(),
     GlobalKey<NavigatorState>(),
@@ -37,6 +39,12 @@ class AppShellState extends State<AppShell> {
     });
   }
 
+  void setFullScreen(bool fullScreenValue) {
+    setState(() {
+      _fullScreen = fullScreenValue;
+    });
+  }
+
   Future<bool> popCurrentTab() async {
     return await _navKeys[_currentIndex].currentState?.maybePop() ?? false;
   }
@@ -48,6 +56,7 @@ class AppShellState extends State<AppShell> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _textToShow = "";
+    _fullScreen = false;
   }
 
   void _selectTab(int index) {
@@ -79,6 +88,7 @@ class AppShellState extends State<AppShell> {
     const selected = Colors.black;
 
     // Hide ALL chrome on tab 1
+    print('fullScreen: $_fullScreen');
     bool hideChrome = _currentIndex == 1;
     PreferredSizeWidget? appBar;
 
@@ -87,11 +97,14 @@ class AppShellState extends State<AppShell> {
         appBar = const CustomUpperBar();
     }
     else if (_currentIndex == 2) {
-      appBar = CustomUpperBar(
-        title: _textToShow.isEmpty ? 'ANALYSIS' : _textToShow,
-        returnButton: _textToShow == 'ANALYSIS' ? false : true,   
-      );
-      hideChrome = _textToShow != 'ANALYSIS';
+      if (!_fullScreen) {
+        appBar = CustomUpperBar(
+          title: _textToShow.isEmpty ? 'RESULTS' : _textToShow,
+          returnButton: _textToShow == 'RESULTS' ? false : true,   
+        );
+      }
+        hideChrome = _textToShow != 'RESULTS';
+      
   }
 
     return PopScope(

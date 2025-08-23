@@ -21,6 +21,24 @@ class AppTextStylesV2 {
     color: Colors.black,
   );
 
+  static TextStyle get homeScreenTitle => GoogleFonts.inter(
+    fontWeight: FontWeight.w600,
+    fontSize: 30,
+    color: Colors.black,
+  );
+
+  static TextStyle get screenSubtitle => GoogleFonts.inter(
+    fontWeight: FontWeight.w400,
+    fontSize: 18,
+    color: Colors.black,
+  );
+
+  static TextStyle get homeScreenSubtitle => GoogleFonts.inter(
+    fontWeight: FontWeight.w400,
+    fontSize: 20,
+    color: Colors.black,
+  );
+
   static TextStyle get textBody => GoogleFonts.inter(
     fontWeight: FontWeight.w400,
     fontSize: 20,
@@ -39,11 +57,24 @@ class AppTextStylesV2 {
         color: Colors.black,
       );
 
+
   static TextStyle get requirementDescription => GoogleFonts.inter(
         fontWeight: FontWeight.w400,
         fontSize: 14,
         color: Colors.black87,
       );
+
+  static TextStyle get homeWidgetTitle => GoogleFonts.inter(
+        fontWeight: FontWeight.w600,
+        fontSize: 16,
+        color: Colors.black,
+      );
+
+  static TextStyle exerciseFeedbackRating(Color color) => GoogleFonts.inter(
+    fontWeight: FontWeight.w700,
+    fontSize: 20,
+    color: color,
+  );
 
   static TextStyle get tooltipText => GoogleFonts.inter(
     fontWeight: FontWeight.w400,
@@ -56,6 +87,18 @@ class AppTextStylesV2 {
         fontSize: 12,
         color: Colors.grey,
       );
+
+  static TextStyle get statCardValue => GoogleFonts.inter(
+        fontWeight: FontWeight.w700,
+        fontSize: 24,
+        color: Colors.black87,
+      );
+
+  static TextStyle get homeTabTitle => GoogleFonts.inter(
+    fontWeight: FontWeight.w500,
+    fontSize: 14,
+    color: Colors.white,
+  );
 
   
   
