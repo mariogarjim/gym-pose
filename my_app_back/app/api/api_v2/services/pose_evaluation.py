@@ -3,13 +3,12 @@ import tempfile
 import zipfile
 import os
 import typing as t
-import uuid
 
 import boto3
 import numpy as np
 
 from app.api.api_v2.schemas.exercise import (
-    FinalEvaluation,
+    ExerciseFeedback,
 )
 from app.api.api_v2.schemas.feedback import Feedback
 from app.api.api_v2.schemas.pose import OutputPose
@@ -18,14 +17,16 @@ from app.api.api_v2.services.video import VideoService, VideoServiceFactory
 from app.enum import ExerciseMeasureEnum
 
 HARDCODED_VIEWPOINTS = [
-    Viewpoint.FRONT,
+    Viewpoint.SIDE,
 ]
 
 
 class PoseEvaluationService:
     def __init__(self):
         self.video_services: t.List[VideoService] = []
-        self.s3_client = boto3.client("s3")
+        # Use the learning-env profile for AWS operations
+        session = boto3.Session(profile_name="learning-env")
+        self.s3_client = session.client("s3")
 
     def unzip_videos_to_temp(self, zip_bytes: bytes) -> list[str]:
         """
@@ -81,35 +82,21 @@ class PoseEvaluationService:
 
             video_service.process_video(exercise_type)
 
-            final_evaluation: FinalEvaluation = video_service.get_final_evaluation()
+            final_evaluation: dict[ExerciseMeasureEnum, ExerciseFeedback] = (
+                video_service.get_final_evaluation()
+            )
 
             print("########################")
-            print("Final evaluation: ", final_evaluation.feedback)
+            print("Final evaluation: ", final_evaluation)
             print("########################")
 
-            output_feedback.append(final_evaluation.feedback)
-            final_evaluations_videos.append(final_evaluation.videos)
+            output_feedback.append(final_evaluation)
 
         output_feedback = video_service.feedback_service.summarize_final_evaluation(
             output_feedback, exercise_type
         )
 
-        output_video_paths = []
-        for index in range(len(self.video_services)):
-            for exercise_measure, frames in final_evaluations_videos[index].items():
-                output_video_paths.append(
-                    self.video_services[index].encode_frames_to_video(
-                        frames=frames,
-                        extra_name=f"{exercise_measure.value}_{self.video_services[index].viewpoint.value}",
-                    )
-                )
-
-        print(f"output_feedback: {output_feedback}")
-
-        zip_buffer = VideoServiceFactory.process_videos_response(output_video_paths)
-
         print("Returning streaming response")
         return OutputPose(
             feedback=output_feedback,
-            videos=zip_buffer.getvalue(),
         )

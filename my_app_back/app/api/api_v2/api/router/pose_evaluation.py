@@ -21,7 +21,7 @@ router = APIRouter(
     "/upload",
     summary="Upload a video for processing",
     status_code=status.HTTP_201_CREATED,
-    response_class=StreamingResponse,
+    response_model=OutputPose,
 )
 def upload_video(
     files: t.List[UploadFile] = File(...),
@@ -58,21 +58,4 @@ def upload_video(
         exercise_type=exercise_type,
     )
 
-    # Create a new ZIP that includes both videos and feedback
-    final_zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(final_zip_buffer, "w", zipfile.ZIP_DEFLATED) as final_zip:
-        # Add the processed videos ZIP
-        final_zip.writestr("videos.zip", pose_result.videos)
-
-        # Add feedback as JSON
-        feedback_json = pose_result.feedback.model_dump()
-        final_zip.writestr("feedback.json", json.dumps(feedback_json, indent=2))
-
-    final_zip_buffer.seek(0)
-
-    # Return the complete result as a streaming response
-    return StreamingResponse(
-        final_zip_buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=analysis_result.zip"},
-    )
+    return pose_result

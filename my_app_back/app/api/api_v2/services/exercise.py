@@ -18,7 +18,6 @@ from app.api.api_v1.services.exercise import (
 )
 from app.api.api_v2.schemas.exercise import (
     ExerciseFeedback,
-    FinalEvaluation,
     VideoSegment,
 )
 from app.constants import (
@@ -89,7 +88,7 @@ class BaseExerciseService:
         self.calculation_service = CalculationService()
 
     def get_writer(
-        self, measure: ExerciseMeasureEnum, h: int, w: int
+        self, measure: ExerciseMeasureEnum, w: int, h: int
     ) -> FFmpegPipeWriter:
         """
         Get the FFmpeg writer for the measure. If it doesn't exist, create it.
@@ -110,7 +109,7 @@ class BaseExerciseService:
     ):
         raise NotImplementedError("Subclasses must implement this method")
 
-    def get_final_evaluation(self) -> FinalEvaluation:
+    def get_final_evaluation(self) -> dict[ExerciseMeasureEnum, ExerciseFeedback]:
         raise NotImplementedError("Subclasses must implement this method")
 
 
@@ -156,9 +155,7 @@ class ExerciseSquad(BaseExerciseService):
             frame=copy_frame_back_posture,
             shoulder=self.shoulder,
             hip=self.hip,
-            w=w,
-            h=h,
-            angle_deg=back_posture_angle_deg,
+            max_offset=max_offset,
         )
         copy_frame_squad_depth = frame_img.copy()
         draw_squad_depth(
@@ -185,6 +182,7 @@ class ExerciseSquad(BaseExerciseService):
     def evaluate_frame(
         self, frame_img: np.ndarray, frame_index: int, landmarks: NormalizedLandmarkList
     ):
+        self.set_relevant_landmark_points(landmarks)
         # #########################################################################
         # [SQUAD-01] Back Posture:
         # #########################################################################
@@ -254,7 +252,7 @@ class ExerciseSquad(BaseExerciseService):
 
     def get_final_evaluation(
         self,
-    ) -> FinalEvaluation:
+    ) -> dict[ExerciseMeasureEnum, ExerciseFeedback]:
         # Upload all the videos to S3
         for _, writer in self.writers.items():
             writer.close_and_upload()
@@ -284,18 +282,18 @@ class ExerciseSquad(BaseExerciseService):
             measure_feedback=self.back_posture,
         )
         if squat_torso_angle_feedback:
-            feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = ExerciseFeedback(
+            feedback[ExerciseMeasureEnum.SQUAT_BACK_POSTURE] = ExerciseFeedback(
                 rating=ExerciseRatingEnum.DANGEROUS,
                 comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.SQUAT][
-                    ExerciseMeasureEnum.SQUAT_TORSO_ANGLE
+                    ExerciseMeasureEnum.SQUAT_BACK_POSTURE
                 ][ExerciseRatingEnum.DANGEROUS],
                 video_segments=squat_torso_angle_feedback,
             )
         else:
-            feedback[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE] = ExerciseFeedback(
+            feedback[ExerciseMeasureEnum.SQUAT_BACK_POSTURE] = ExerciseFeedback(
                 rating=ExerciseRatingEnum.PERFECT,
                 comment=MAPPING_EXERCISE_MEASURE_TO_COMMENT[ExerciseEnum.SQUAT][
-                    ExerciseMeasureEnum.SQUAT_TORSO_ANGLE
+                    ExerciseMeasureEnum.SQUAT_BACK_POSTURE
                 ][ExerciseRatingEnum.PERFECT],
                 video_segments=[VideoSegment(applies_to_full_video=True)],
             )
@@ -320,10 +318,7 @@ class ExerciseSquad(BaseExerciseService):
                 video_segments=[VideoSegment(applies_to_full_video=True)],
             )
 
-        return FinalEvaluation(
-            feedback=feedback,
-            videos=self.videos,
-        )
+        return feedback
 
 
 class ExerciseBenchPress(BaseExerciseService):
@@ -351,10 +346,7 @@ class ExerciseBenchPress(BaseExerciseService):
                 video_segments=[VideoSegment(applies_to_full_video=True)],
             )
         }
-        return FinalEvaluation(
-            feedback=dummy_feedback,
-            videos=self.videos,
-        )
+        return dummy_feedback
 
 
 class ExercisePullUp(BaseExerciseService):
@@ -572,10 +564,7 @@ class ExercisePullUp(BaseExerciseService):
                 )
             )
 
-        return FinalEvaluation(
-            feedback=feedback,
-            videos=self.videos,
-        )
+        return feedback
 
 
 class ExerciseSideLateralRaises(BaseExerciseService):
@@ -837,10 +826,7 @@ class ExerciseSideLateralRaises(BaseExerciseService):
                 )
             )
 
-        return FinalEvaluation(
-            feedback=feedback,
-            videos=self.videos,
-        )
+        return feedback
 
 
 class ExerciseTricepsExtension(BaseExerciseService):
@@ -994,7 +980,4 @@ class ExerciseTricepsExtension(BaseExerciseService):
                 )
             )
 
-        return FinalEvaluation(
-            feedback=feedback,
-            videos=self.videos,
-        )
+        return feedback

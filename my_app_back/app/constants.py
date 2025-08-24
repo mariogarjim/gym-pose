@@ -1,10 +1,10 @@
 from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExerciseRatingEnum
 
-BUCKET_NAME = "gym-pose-results"
+BUCKET_NAME = "gym-pose-videos-860044295834-eu-west-1"
 
 MAPPING_EXERCISE_TO_EXERCISE_MEASURES = {
     ExerciseEnum.SQUAT: [
-        ExerciseMeasureEnum.SQUAT_TORSO_ANGLE,
+        ExerciseMeasureEnum.SQUAT_BACK_POSTURE,
         ExerciseMeasureEnum.HEAD_ALIGNMENT,
         ExerciseMeasureEnum.SQUAT_DEPTH,
         ExerciseMeasureEnum.BASIC_LANDMARKS,
@@ -35,7 +35,7 @@ MAPPING_EXERCISE_MEASURE_TO_COMMENT = {
             ExerciseRatingEnum.PERFECT: "The squat depth is perfect",
             ExerciseRatingEnum.WARNING: "The squat depth is not deep enough. The hips should be lower than the knees.",
         },
-        ExerciseMeasureEnum.SQUAT_TORSO_ANGLE: {
+        ExerciseMeasureEnum.SQUAT_BACK_POSTURE: {
             ExerciseRatingEnum.PERFECT: "The squat torso angle is perfect",
             ExerciseRatingEnum.DANGEROUS: "The squat torso angle is not correct. The torso should be perpendicular to the ground.",
         },

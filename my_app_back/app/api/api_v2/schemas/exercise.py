@@ -17,9 +17,3 @@ class ExerciseFeedback(BaseModel):
     rating: ExerciseRatingEnum
     comment: str
     video_segments: list[VideoSegment]
-
-
-class FinalEvaluation(BaseModel):
-    model_config = {"arbitrary_types_allowed": True}
-    feedback: dict[ExerciseMeasureEnum, ExerciseFeedback]
-    videos: dict[ExerciseMeasureEnum, list[np.ndarray]]

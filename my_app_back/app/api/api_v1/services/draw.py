@@ -18,6 +18,11 @@ class ColorsEnum:
     GRAY = (128, 128, 128)
 
 
+def scale_point(point, image_shape):
+    h, w = image_shape[:2]
+    return (int(point[0] * w), int(point[1] * h))
+
+
 def draw_landmarks(frame: np.ndarray, landmarks: NormalizedLandmarkList):
     mp_drawing.draw_landmarks(
         frame,
@@ -73,15 +78,21 @@ def draw_back_posture(
     frame,
     shoulder,
     hip,
-    w,
-    h,
-    angle_deg,
+    max_offset,
     arrow_length=100,
     torso_color=ColorsEnum.GREEN,
     gravity_color=ColorsEnum.BLUE,
     arc_color=ColorsEnum.YELLOW,
-    thickness=2,
+    thickness=1,
 ):
+    shoulder = scale_point(shoulder, frame.shape)
+    hip = scale_point(hip, frame.shape)
+
+    # Convert points to int pixel coordinates
+    shoulder = tuple(map(int, shoulder))
+    hip = tuple(map(int, hip))
+    h, w = frame.shape[:2]
+
     # 1. Draw torso line
     cv2.line(frame, shoulder, hip, torso_color, thickness)
     cv2.putText(
@@ -122,6 +133,15 @@ def draw_back_posture(
 
     # 3. Compute torso vector and angle with vertical
     torso_vec = np.array(shoulder) - np.array(hip)
+    torso_norm = np.linalg.norm(torso_vec)
+    angle_deg = 0
+    if torso_norm > 1e-6:
+        # Vertical up vector
+        vertical_vec = np.array([0, -1])  # y- is up
+        cos_theta = np.dot(torso_vec, vertical_vec) / torso_norm
+        raw_angle = np.degrees(np.arccos(np.clip(cos_theta, -1.0, 1.0)))
+        angle_deg = int(min(raw_angle, 180 - raw_angle))  # Acute angle
+
     # 4. Draw arc from vertical (up) to torso
     arc_radius = 40
     torso_angle = math.degrees(math.atan2(torso_vec[1], torso_vec[0])) % 360
@@ -165,7 +185,6 @@ def draw_squad_depth(
     knee,
     hip,
     depth,
-    frame_number,
     knee_color=(0, 255, 0),
     hip_color=(0, 0, 255),
     thickness=2,

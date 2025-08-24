@@ -13,7 +13,8 @@ from app.api.api_v2.schemas.video import VideoMetadata
 from app.api.api_v2.services.exercise import ExerciseFactory
 from app.api.api_v2.services.feedback import FeedbackService
 from app.enum import ExerciseEnum, Viewpoint
-from app.api.api_v2.schemas.exercise import FinalEvaluation
+from app.api.api_v2.schemas.exercise import ExerciseFeedback
+from app.enum import ExerciseMeasureEnum
 
 
 class VideoService:
@@ -21,7 +22,6 @@ class VideoService:
         self.mp_pose = mp.solutions.pose
         self.feedback_service = feedback_service
 
-        self.summarized_final_evaluation: FinalEvaluation = None
         self.video_metadata: t.List[VideoMetadata] = []
         self.video_paths: t.List[str] = []
 
@@ -86,10 +86,14 @@ class VideoService:
                 result = pose.process(rgb_frame)
                 landmarks = result.pose_landmarks
 
+                print(
+                    f"frame_shape: {frame.shape}, w: {frame.shape[1]}, h: {frame.shape[0]}"
+                )
+
                 if landmarks:
                     self.exercise_service.evaluate_frame(
                         frame_img=frame,
-                        frame=frame_count,
+                        frame_index=frame_count,
                         landmarks=landmarks,
                     )
 
@@ -99,7 +103,7 @@ class VideoService:
 
         print(f"video path: {self.video_path} processed")
 
-    def get_final_evaluation(self) -> FinalEvaluation:
+    def get_final_evaluation(self) -> dict[ExerciseMeasureEnum, ExerciseFeedback]:
         self._clean_temp_file()
         return self.exercise_service.get_final_evaluation()
 
