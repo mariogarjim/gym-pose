@@ -36,7 +36,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 "body": json.dumps({"status": "healthy!"}),
             }
 
-        elif method == "POST" and path == "/upload":
+        elif method == "POST" and path == "/generate-presigned-url":
             user_id = params.get("user_id")
             filename = params.get("filename")
             exercise_type = params.get("exercise_type")
