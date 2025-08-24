@@ -1,72 +1,81 @@
 // lib/core/api/video_upload_service.dart
 
-import 'package:http/http.dart' as http;
-import 'package:my_app/core/utils/mime_utils.dart';
-import 'package:my_app/models/upload_video.dart';
-import 'package:path/path.dart' as path;
-import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
+typedef Progress = void Function(int sent, int total);
 
 class VideoUploadService {
   
-  static const String _baseUrl = 'http://10.0.2.2:8000/api/v1/video/upload';
+  static String get _baseUrl => kDebugMode 
+    ? 'https://6ox7wiysef.execute-api.eu-west-1.amazonaws.com/prod'
+    : 'https://api.gym-pose.com/api/v1/video/upload';
 
-  static Future<UploadVideoResult> uploadAndProcessVideo({required String videoPath, required String exerciseType}) async {
-    final uri = Uri.parse(_baseUrl).replace(queryParameters: {
+  static Future<Map<String, String>> getPresignedUrl({required String exerciseType, required String userId}) async {
+    print('Url: $_baseUrl');
+    final uri = Uri.parse('$_baseUrl/generate-presigned-url').replace(queryParameters: {
       'exercise_type': exerciseType,
+      'user_id': userId,
+      'filename': 'video.mp4',
     });
 
-    final request = http.MultipartRequest('POST', uri);
+    final response = await http.post(uri);
 
-    final multipartFile = await http.MultipartFile.fromPath(
-      'file',
-      videoPath,
-      contentType: getMimeType(videoPath),
-    );
-
-    request.files.add(multipartFile);
-
-    final streamedResponse = await request.send();
-    final response = await http.Response.fromStream(streamedResponse);
+    print('Response: ${response}');
 
     if (response.statusCode != 200) {
-      throw Exception('Upload failed: ${response.body}');
+      throw Exception('HTTP request failed: ${response.statusCode} - ${response.body}');
     }
 
-    final feedback = response.headers['x-exercise-feedback'];
-    final clipsGenerated = response.headers['x-clips-generated'];
-    final zipBytes = response.bodyBytes;
-    final extractedDirectory = await _extractZip(zipBytes);
+    final responseBody = jsonDecode(response.body);
+    print('Response body: $responseBody');
+    
+    final url = responseBody['url'] as String;
+    print('Url: $url');
+    final key = responseBody['key'] as String;
+    print('Key: $key');
 
-    final int clipsGeneratedInt = int.parse(clipsGenerated ?? '0');
-
-    return UploadVideoResult(
-      zipBytes: zipBytes,
-      feedback: feedback ?? '',
-      clipsGenerated: clipsGeneratedInt,
-      extractedDirectory: extractedDirectory,
-    );
+    return {
+      'url': url,
+      'key': key,
+    };
   }
 
-  static Future<Directory> _extractZip(Uint8List zipBytes) async {
-    final archive = ZipDecoder().decodeBytes(zipBytes);
+  static Future<void> uploadVideoWithProgress({
+    required Uri presignedUrl,
+    required File file,
+    String contentType = 'video/mp4',
+    Progress? onProgress,
+  }) async {
+      final client = http.Client();
+      try {
+        final length = await file.length();
+        final stream = file.openRead();
+        int sent = 0;
 
-    final appDocDir = await getApplicationDocumentsDirectory();
-    final outputDir = Directory(path.join(appDocDir.path, "unzipped_videos_${DateTime.now().millisecondsSinceEpoch}"));
-    outputDir.createSync(recursive: true);
+        final request = http.StreamedRequest('PUT', presignedUrl)
+          ..headers['Content-Type'] = contentType
+          ..headers['Content-Length'] = length.toString();
 
-    for (final file in archive) {
-      final filePath = path.join(outputDir.path, file.name);
+        await for (final chunk in stream) {
+          request.sink.add(chunk);
+          sent += chunk.length;
+          onProgress?.call(sent, length);
+        }
+        await request.sink.close();
 
-      if (file.isFile) {
-        final outFile = File(filePath);
-        await outFile.create(recursive: true);
-        await outFile.writeAsBytes(file.content as List<int>);
+        final response = await client.send(request);
+        if (response.statusCode != 200 && response.statusCode != 204) {
+          final body = await response.stream.bytesToString();
+          throw Exception('Upload failed: ${response.statusCode} — $body');
+        }
+        else {
+          print('Upload successful');
+        }
+      } finally {
+        client.close();
       }
-    }
-
-    return outputDir;
   }
 }

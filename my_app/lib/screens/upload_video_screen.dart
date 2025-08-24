@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
@@ -7,11 +8,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:my_app/theme/text_styles.dart';
 import 'package:my_app/screens/feedback_exercise_selection_screen.dart';
 import 'package:my_app/app_shell.dart';
+import 'package:my_app/core/api/video_upload_service.dart';
 
 final requiredVideos = {
   "SQUATS": [
     {"id": "side", "label": "Side View", "description": "Film from your left or right side"},
-    {"id": "front", "label": "Front View", "description": "Film yourself facing the camera"},
   ],
   "PULL-UPS": [
     {"id": "back", "label": "Back View", "description": "Film yourself from the back"},
@@ -272,16 +273,28 @@ Widget build(BuildContext context) {
               ),
             ),
             onPressed: _readyToContinue
-            ? () {
-                    final shell = AppShell.of(context);
-                    // ✅ push inside tab 2 so the navbar stays and AppShell is the ancestor
-                    shell?.pushOnTab(
-                      2,
-                      MaterialPageRoute(
-                        builder: (_) => FeedbackExerciseSelectionsScreen(exerciseName: _exerciseName),
-                      ),
+            ? () async {
+                    for (final file in _files.values) {
+                      if (file == null) continue;
+                      final presignedUrl = await VideoUploadService.getPresignedUrl(exerciseType: _exerciseName, userId: 'user1234');
+                      print('Presigned URL: ${presignedUrl['url']}');
+                      VideoUploadService.uploadVideoWithProgress(
+                        presignedUrl: Uri.parse(presignedUrl['url']!),
+                        file: File(file.path),
+                      onProgress: (sent, total) {
+                        print('Upload progress: $sent/$total');
+                      },
+                      );
+                      final shell = AppShell.of(context);
+                      // ✅ push inside tab 2 so the navbar stays and AppShell is the ancestor
+                      shell?.pushOnTab(
+                        2,
+                        MaterialPageRoute(
+                          builder: (_) => FeedbackExerciseSelectionsScreen(exerciseName: _exerciseName),
+                        ),
                     );
                   }
+                }
                 : null,
             child: const Text(
               "Continue",
