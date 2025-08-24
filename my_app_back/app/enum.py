@@ -15,7 +15,7 @@ class ExerciseMeasureEnum(Enum):
     # SQUAT
     SQUAT_KNEE_ANKLE_ALIGNMENT = "squat_knee_ankle_alignment"
     SQUAT_DEPTH = "squat_depth"
-    SQUAT_TORSO_ANGLE = "squat_torso_angle"
+    SQUAT_BACK_POSTURE = "squat_back_posture"
     HEAD_ALIGNMENT = "head_alignment"
 
     # PULL UP

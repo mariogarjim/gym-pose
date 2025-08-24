@@ -4,6 +4,8 @@ import mediapipe as mp
 import numpy as np
 from mediapipe.framework.formats import landmark_pb2
 from mediapipe.framework.formats.landmark_pb2 import NormalizedLandmarkList
+import uuid
+
 
 from app.api.api_v1.services.exercise import (
     draw_back_posture,
@@ -24,6 +26,37 @@ from app.constants import (
     MAPPING_EXERCISE_TO_EXERCISE_MEASURES,
 )
 from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExerciseRatingEnum
+from app.api.api_v2.services.ffmepg_pipe import FFmpegPipeWriter
+from app.api.api_v2.services.calculation import CalculationService
+
+
+"""
+The fps of the feedback annotated videos are reduce to 6 fps to reduce costs.
+This is enough to see the feedback, not very big visual difference.
+"""
+
+"""
+There are different types of measures.
+ - Measures that are independent to reps i.e. back posture: 
+    Back posture should be correct during all the video.
+ - Measures that are dependent to reps:
+    1. Measures that are calculated at the start of the concentric phase 
+        and at the end of the eccentric phase.
+    2. Measures that are calculated once per repetition i.e. squat depth.
+"""
+
+""" 
+
+Idea para el futuro:
+
+Para asegurarnos que las mediciones entre frames tienen la minima cantidad de ruido posible,
+utilizamos el filtro de Savitzky–Golay (truco local de aproximación polinómica).
+
+La idea es que los movimientos de los ejercicios son curvas suaves en el tiempo, especialmente
+en tiempos cortos. Por ello, cogemos conjuntos de n frames (i.e. 6 frames) y aproximamos ese
+pequeño tramo con un polinomio de bajo grado (i.e. grado 2). Todos los puntos de cada 6 
+frames se pasarán por este filtro, asegurándonos que la curva resultante es suave.
+"""
 
 
 class ExerciseFactory:
@@ -46,9 +79,28 @@ class BaseExerciseService:
         self.exercise = exercise
         self.total_frames = total_frames
 
-        # Temporal windows basic parameters
+        # Default parameters for temporal evaluation
         self.window_size = 30
         self.window_threshold_frames = 10
+
+        # FFmpeg writers for the feedback annotated videos
+        self.writers: dict[ExerciseMeasureEnum, FFmpegPipeWriter] = {}
+
+        self.calculation_service = CalculationService()
+
+    def get_writer(
+        self, measure: ExerciseMeasureEnum, h: int, w: int
+    ) -> FFmpegPipeWriter:
+        """
+        Get the FFmpeg writer for the measure. If it doesn't exist, create it.
+        """
+        if measure in self.writers:
+            return self.writers[measure]
+        out_path = f"/tmp/{uuid.uuid4().hex}_{measure}.mp4"
+        self.writers[measure] = FFmpegPipeWriter(
+            out_path, w, h, fps=6, crf=22, preset="veryfast"
+        )
+        return self.writers[measure]
 
     def evaluate_frame(
         self,
@@ -64,21 +116,18 @@ class BaseExerciseService:
 
 class ExerciseSquad(BaseExerciseService):
     def __init__(self, total_frames: int):
-        super().__init__(ExerciseEnum.SQUAT, total_frames)
+        exercise = ExerciseEnum.SQUAT
+        super().__init__(exercise, total_frames)
 
-        # Initial values for the feedback experimentation:
+        # Measures
+        self.measures = MAPPING_EXERCISE_TO_EXERCISE_MEASURES[exercise]
+
+        # Empty states to perform the feedback evaluation
         self.back_posture = [0] * self.total_frames
         self.deep_squad_frames = 0
         self.head_alignment = [0] * self.total_frames
 
-        # Drawed frames list
-        self.videos: dict[ExerciseMeasureEnum, list[np.ndarray]] = {}
-        for measure in MAPPING_EXERCISE_TO_EXERCISE_MEASURES[ExerciseEnum.SQUAT]:
-            self.videos[measure] = []
-
-    def evaluate_frame(
-        self, frame_img: np.ndarray, frame: int, landmarks: NormalizedLandmarkList
-    ):
+    def set_relevant_landmark_points(self, landmarks: NormalizedLandmarkList):
         # Get landmark coordinates using landmark indices
         left_hip = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_HIP.value]
         left_knee = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_KNEE.value]
@@ -88,43 +137,95 @@ class ExerciseSquad(BaseExerciseService):
         left_ear = landmarks.landmark[mp.solutions.pose.PoseLandmark.LEFT_EAR.value]
 
         # Convert landmarks to points for angle calculation
-        hip = [float(left_hip.x), float(left_hip.y)]
-        knee = [float(left_knee.x), float(left_knee.y)]
-        shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
-        ear = [float(left_ear.x), float(left_ear.y)]
+        self.hip = [float(left_hip.x), float(left_hip.y)]
+        self.knee = [float(left_knee.x), float(left_knee.y)]
+        self.shoulder = [float(left_shoulder.x), float(left_shoulder.y)]
+        self.ear = [float(left_ear.x), float(left_ear.y)]
 
+    def annotate_frame(
+        self,
+        frame_img: np.ndarray,
+        w: int,
+        h: int,
+        back_posture_angle_deg: int,
+        depth: int,
+        max_offset: int,
+    ):
+        copy_frame_back_posture = frame_img.copy()
+        draw_back_posture(
+            frame=copy_frame_back_posture,
+            shoulder=self.shoulder,
+            hip=self.hip,
+            w=w,
+            h=h,
+            angle_deg=back_posture_angle_deg,
+        )
+        copy_frame_squad_depth = frame_img.copy()
+        draw_squad_depth(
+            frame=copy_frame_squad_depth, knee=self.knee, hip=self.hip, depth=depth
+        )
+        copy_frame_head_alignment = frame_img.copy()
+        draw_head_alignment(
+            frame=copy_frame_head_alignment,
+            ear=self.ear,
+            shoulder=self.shoulder,
+            max_offset=max_offset,
+        )
+
+        self.get_writer(ExerciseMeasureEnum.SQUAT_BACK_POSTURE, w, h).write(
+            copy_frame_back_posture
+        )
+        self.get_writer(ExerciseMeasureEnum.SQUAT_DEPTH, w, h).write(
+            copy_frame_squad_depth
+        )
+        self.get_writer(ExerciseMeasureEnum.HEAD_ALIGNMENT, w, h).write(
+            copy_frame_head_alignment
+        )
+
+    def evaluate_frame(
+        self, frame_img: np.ndarray, frame_index: int, landmarks: NormalizedLandmarkList
+    ):
+        # #########################################################################
         # [SQUAD-01] Back Posture:
+        # #########################################################################
         # Define a line going down from the hip
-        torso_vec = np.array(hip) - np.array(shoulder)
-
-        copy_frame_img = frame_img.copy()
-        back_posture_angle = draw_back_posture(copy_frame_img, shoulder, hip, torso_vec)
-        self.videos[ExerciseMeasureEnum.SQUAT_TORSO_ANGLE].append(copy_frame_img)
+        back_posture_angle = self.calculation_service.squat_back_posture_calculations(
+            self.shoulder, self.hip, frame_img.shape
+        )
         if back_posture_angle > 40:
-            self.back_posture[frame] = 1
+            self.back_posture[frame_index] = 1
 
+        # #########################################################################
         # [SQUAD-02] Squad depth:
-        depth = hip[1] - knee[1]
-        copy_frame_img = frame_img.copy()
-        draw_squad_depth(copy_frame_img, hip, knee, depth, frame)
-        self.videos[ExerciseMeasureEnum.SQUAT_DEPTH].append(copy_frame_img)
+        # #########################################################################
+        depth = self.calculation_service.squat_depth_calculations(
+            self.hip, self.knee, frame_img.shape
+        )
         if depth > 0:
             self.deep_squad_frames += 1
 
+        # #########################################################################
         # [SQUAD-03] Head alignment:
-        horizontal_offset = ear[0] - shoulder[0]  # +ve = ear ahead of shoulder
-        max_offset = 0.1
-        copy_frame_img = frame_img.copy()
-        draw_head_alignment(copy_frame_img, ear, shoulder, max_offset)
-        self.videos[ExerciseMeasureEnum.HEAD_ALIGNMENT].append(copy_frame_img)
-        if horizontal_offset > max_offset:
-            self.head_alignment[frame] = 1
-
-        # Draw landmarks
-        mp.solutions.drawing_utils.draw_landmarks(
-            frame_img, landmarks, mp.solutions.pose.POSE_CONNECTIONS
+        # #########################################################################
+        horizontal_offset = self.calculation_service.squat_head_alignment_calculations(
+            self.ear, self.shoulder, frame_img.shape
         )
-        self.videos[ExerciseMeasureEnum.BASIC_LANDMARKS].append(frame_img)
+        max_offset = 0.1
+        if horizontal_offset > max_offset:
+            self.head_alignment[frame_index] = 1
+
+        # #########################################################################
+        # Draw feedback. We only annotate every 5 frames to reduce the number of frames.
+        # #########################################################################
+        if frame_index % 5 == 0:
+            self.annotate_frame(
+                frame_img,
+                w=frame_img.shape[1],
+                h=frame_img.shape[0],
+                back_posture_angle_deg=back_posture_angle,
+                depth=depth,
+                max_offset=horizontal_offset,
+            )
 
     def _get_relevant_video_segments(
         self,
@@ -154,6 +255,11 @@ class ExerciseSquad(BaseExerciseService):
     def get_final_evaluation(
         self,
     ) -> FinalEvaluation:
+        # Upload all the videos to S3
+        for _, writer in self.writers.items():
+            writer.close_and_upload()
+
+        # Get the feedback
         feedback: dict[ExerciseMeasureEnum, ExerciseFeedback] = {}
 
         deep_squad_threshold = 30

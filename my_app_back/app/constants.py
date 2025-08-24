@@ -1,5 +1,7 @@
 from app.enum import ExerciseEnum, ExerciseMeasureEnum, ExerciseRatingEnum
 
+BUCKET_NAME = "gym-pose-results"
+
 MAPPING_EXERCISE_TO_EXERCISE_MEASURES = {
     ExerciseEnum.SQUAT: [
         ExerciseMeasureEnum.SQUAT_TORSO_ANGLE,

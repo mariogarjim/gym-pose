@@ -108,7 +108,7 @@ export class ArchitectureStack extends cdk.Stack {
       memorySize: 3008,
       timeout: Duration.minutes(10),
       architecture: lambda.Architecture.X86_64,
-      ephemeralStorageSize: Size.gibibytes(10),
+      ephemeralStorageSize: Size.gibibytes(10), // This high tmp storage is needed for the video proccesing. Low cost difference: 10,000 invocaciones de 10 min saldrían ≈ $1.76
       environment: {
         BUCKET: videoBucket.bucketName,
         TABLE: analysesTable.tableName,
