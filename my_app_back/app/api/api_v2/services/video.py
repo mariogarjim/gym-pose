@@ -86,16 +86,14 @@ class VideoService:
                 result = pose.process(rgb_frame)
                 landmarks = result.pose_landmarks
 
-                print(
-                    f"frame_shape: {frame.shape}, w: {frame.shape[1]}, h: {frame.shape[0]}"
-                )
-
                 if landmarks:
                     self.exercise_service.evaluate_frame(
                         frame_img=frame,
                         frame_index=frame_count,
                         landmarks=landmarks,
                     )
+
+                print(f"Processing frame {frame_count}...")
 
                 frame_count += 1
 
