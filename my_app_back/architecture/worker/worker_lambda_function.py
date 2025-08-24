@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 from typing import Dict, Any
+import uuid
 
 from app.api.api_v2.services.pose_evaluation import PoseEvaluationService
 from app.enum import ExerciseEnum
@@ -79,13 +80,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         }
                     )
 
-                    # Get the file in memory
-                    object = s3_client.get_object(Bucket=bucket, Key=key)
-                    file_content = object["Body"].read()
+                    # Stream from S3 -> /tmp (constant memory)
+                    tmp_path = f"/tmp/{uuid.uuid4().hex}{os.path.splitext(key)[1]}"
+                    with open(tmp_path, "wb") as f:
+                        s3_client.download_fileobj(bucket, key, f)
 
                     # Call the pose evaluation service
                     output_pose = pose_evaluation_service.evaluate_pose(
-                        file_content=file_content,
+                        file_path=tmp_path,
                         exercise_type=exercise_type,
                         user_id=user_id,
                     )

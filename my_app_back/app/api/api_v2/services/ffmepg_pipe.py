@@ -35,9 +35,19 @@ class FFmpegPipeWriter:
                 "- Windows: Download from https://ffmpeg.org/download.html"
             )
 
-        # Use the learning-env profile for AWS operations
-        session = boto3.Session(profile_name="learning-env")
-        self.s3 = session.client("s3")
+        # Use AWS credential chain: IAM roles in AWS, profiles locally
+        env_profile = os.getenv("AWS_PROFILE")
+
+        if env_profile:
+            # Local development with explicit profile
+            print(f"🏠 FFmpeg local dev: Using AWS profile: {env_profile}")
+            session = boto3.Session(profile_name=env_profile)
+            self.s3 = session.client("s3")
+        else:
+            # AWS environment: Use IAM roles automatically
+            print("☁️ FFmpeg AWS environment: Using IAM role credentials")
+            self.s3 = boto3.client("s3")
+
         self.out_path = out_path
         self.width, self.height = width, height
         self.proc = subprocess.Popen(

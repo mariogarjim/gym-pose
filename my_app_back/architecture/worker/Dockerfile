@@ -13,7 +13,7 @@ RUN dnf install -y tar xz && dnf clean all && \
 COPY . ${LAMBDA_TASK_ROOT}
 
 # Copy and install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
+RUN pip install --no-cache-dir -r architecture/worker/requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
 # OpenCV system dependencies
 RUN dnf install -y mesa-libGL mesa-libGLU libX11 && dnf clean all

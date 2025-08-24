@@ -1,9 +1,3 @@
-import json
-from openai import OpenAI
-from typing import Optional, Dict, Any
-
-from app.core.config import settings
-from app.prompts import PROMPT_SYSTEM_FEEDBACK
 from pydantic import BaseModel, Field
 from app.enum import ExerciseMeasureEnum, ExerciseFeedbackEnum, ExerciseEnum
 from app.api.api_v1.services.exercise import ExerciseFeedback
@@ -53,75 +47,7 @@ class FeedbackDict(BaseModel):
 
 class Feedback:
     def __init__(self):
-        try:
-            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        except Exception as e:
-            raise ValueError(f"Failed to initialize OpenAI client: {str(e)}")
-
-    def generate_feedback_llm(
-        self, feedback: Dict[str, Any], model: str = "gpt-4o-mini"
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Generate feedback using OpenAI's API.
-
-        Args:
-            feedback (Dict[str, Any]): The feedback data to process
-            model (str): The OpenAI model to use. Defaults to 'gpt-4o-mini'
-
-        Returns:
-            Optional[Dict[str, Any]]: The API response or None if there's an error
-
-        Raises:
-            Exception: If there's an error during the API call
-        """
-        try:
-            print("feedback_test: ", str(feedback))
-
-            # Convert feedback to a serializable format
-            serializable_feedback = {}
-            for key, value in feedback.items():
-                if hasattr(value, "__dict__"):
-                    serializable_feedback[str(key)] = {
-                        "feedback": value.feedback,
-                        "comment": value.comment,
-                        "relevant_windows": [
-                            {
-                                "from_frame": w.from_frame,
-                                "to_frame": w.to_frame,
-                                "number_of_relevant_frames": w.number_of_relevant_frames,
-                                "comment": w.comment,
-                            }
-                            for w in value.relevant_windows
-                        ]
-                        if value.relevant_windows
-                        else [],
-                    }
-                else:
-                    serializable_feedback[str(key)] = value
-
-            feedback_str = json.dumps(serializable_feedback)
-            print("feedback_str: ", feedback_str)
-
-            response = self.client.beta.chat.completions.parse(
-                model=model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": PROMPT_SYSTEM_FEEDBACK,
-                    },
-                    {"role": "user", "content": feedback_str},
-                ],
-                temperature=0.0,
-                response_format=FeedbackResponse,
-            )
-
-            print("response_test: ", str(response.choices[0].message.parsed))
-
-            return response.choices[0].message.parsed
-
-        except Exception as e:
-            print(f"Error generating feedback: {str(e)}")
-            return None
+        pass
 
     def generate_feedback(
         self,

@@ -122,9 +122,9 @@ class ExerciseSquad(BaseExerciseService):
         self.measures = MAPPING_EXERCISE_TO_EXERCISE_MEASURES[exercise]
 
         # Empty states to perform the feedback evaluation
-        self.back_posture = [0] * self.total_frames
+        self.back_posture = np.zeros(self.total_frames, dtype=np.uint8)
         self.deep_squad_frames = 0
-        self.head_alignment = [0] * self.total_frames
+        self.head_alignment = np.zeros(self.total_frames, dtype=np.uint8)
 
     def set_relevant_landmark_points(self, landmarks: NormalizedLandmarkList):
         # Get landmark coordinates using landmark indices
@@ -454,7 +454,6 @@ class ExercisePullUp(BaseExerciseService):
         mp.solutions.drawing_utils.draw_landmarks(
             frame_img, landmarks, mp.solutions.pose.POSE_CONNECTIONS
         )
-        self.videos[ExerciseMeasureEnum.BASIC_LANDMARKS].append(frame_img)
 
     def _get_relevant_video_segments(
         self,

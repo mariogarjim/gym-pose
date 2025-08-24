@@ -1,11 +1,9 @@
-import io
 import tempfile
 import zipfile
 import os
 import typing as t
 
 import boto3
-import numpy as np
 
 from app.api.api_v2.schemas.exercise import (
     ExerciseFeedback,
@@ -24,11 +22,20 @@ HARDCODED_VIEWPOINTS = [
 class PoseEvaluationService:
     def __init__(self):
         self.video_services: t.List[VideoService] = []
-        # Use the learning-env profile for AWS operations
-        session = boto3.Session(profile_name="learning-env")
-        self.s3_client = session.client("s3")
+        # Use AWS credential chain: IAM roles in AWS, profiles locally
+        env_profile = os.getenv("AWS_PROFILE")
 
-    def unzip_videos_to_temp(self, zip_bytes: bytes) -> list[str]:
+        if env_profile:
+            # Local development with explicit profile
+            print(f"🏠 Local dev: Using AWS profile: {env_profile}")
+            session = boto3.Session(profile_name=env_profile)
+            self.s3_client = session.client("s3")
+        else:
+            # AWS environment: Use IAM roles automatically
+            print("☁️ AWS environment: Using IAM role credentials")
+            self.s3_client = boto3.client("s3")
+
+    def unzip_videos_to_temp(self, file_path: str) -> list[str]:
         """
         Unzips a ZIP file from bytes into unique temporary directories.
         Returns a list of paths to the extracted video files.
@@ -37,7 +44,7 @@ class PoseEvaluationService:
 
         # Create a unique temporary directory
         with tempfile.TemporaryDirectory() as tmpdir:
-            with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+            with zipfile.ZipFile(file_path) as z:
                 z.extractall(tmpdir)
 
             # Walk through and collect all files
@@ -59,22 +66,18 @@ class PoseEvaluationService:
 
     def evaluate_pose(
         self,
-        file_content: bytes,
+        file_path: str,
         user_id: str,
         exercise_type: ExerciseEnum,
     ) -> OutputPose:
         """
         Process videos and return a streaming response.
 
-        files: The list of files to process. Can be a list of UploadFile or a list of temp file paths.
         exercise_type: The exercise type to process.
         """
         output_feedback: t.List[Feedback] = []
-        final_evaluations_videos: t.List[
-            dict[ExerciseMeasureEnum, list[np.ndarray]]
-        ] = []
 
-        video_paths = self.unzip_videos_to_temp(file_content)
+        video_paths = self.unzip_videos_to_temp(file_path)
 
         for video_path, viewpoint in zip(video_paths, HARDCODED_VIEWPOINTS):
             video_service = VideoServiceFactory.get_video_service(video_path, viewpoint)
