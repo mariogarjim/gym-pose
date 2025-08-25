@@ -274,27 +274,66 @@ Widget build(BuildContext context) {
             ),
             onPressed: _readyToContinue
             ? () async {
-                    for (final file in _files.values) {
-                      if (file == null) continue;
-                      final presignedUrl = await VideoUploadService.getPresignedUrl(exerciseType: _exerciseName, userId: 'user1234');
-                      print('Presigned URL: ${presignedUrl['url']}');
-                      VideoUploadService.uploadVideoWithProgress(
-                        presignedUrl: Uri.parse(presignedUrl['url']!),
-                        file: File(file.path),
-                      onProgress: (sent, total) {
-                        print('Upload progress: $sent/$total');
-                      },
+                    try {
+                      // Collect all video files
+                      final videoFiles = <String, File>{};
+                      for (final entry in _files.entries) {
+                        if (entry.value != null) {
+                          final slotId = entry.key;
+                          final file = File(entry.value!.path);
+                          // Use meaningful names in the zip
+                          final extension = entry.value!.path.split('.').last;
+                          videoFiles['${_exerciseName.toLowerCase()}_$slotId.$extension'] = file;
+                        }
+                      }
+
+                      if (videoFiles.isEmpty) {
+                        print('No videos to upload');
+                        return;
+                      }
+
+                      // Get presigned URL and upload the zip file (created internally)
+                      final presignedUrl = await VideoUploadService.getPresignedUrlForZip(
+                        exerciseType: _exerciseName, 
+                        userId: 'user1234'
                       );
-                      final shell = AppShell.of(context);
-                      // ✅ push inside tab 2 so the navbar stays and AppShell is the ancestor
-                      shell?.pushOnTab(
-                        2,
-                        MaterialPageRoute(
-                          builder: (_) => FeedbackExerciseSelectionsScreen(exerciseName: _exerciseName),
-                        ),
-                    );
+                      print('Presigned URL: ${presignedUrl['url']}');
+                      
+                      await VideoUploadService.uploadZipWithProgress(
+                        presignedUrl: Uri.parse(presignedUrl['url']!),
+                        files: videoFiles,
+                        zipFileName: '${_exerciseName.toLowerCase()}_videos.zip',
+                        onProgress: (sent, total) {
+                          print('Upload progress: $sent/$total');
+                        },
+                      );
+
+                      print('Upload completed successfully');
+
+                      // Navigate to the next screen
+                      if (context.mounted) {
+                        final shell = AppShell.of(context);
+                        shell?.pushOnTab(
+                          2,
+                          MaterialPageRoute(
+                            builder: (_) => FeedbackExerciseSelectionsScreen(exerciseName: _exerciseName),
+                          ),
+                        );
+                      }
+
+                    } catch (e) {
+                      print('Error during upload: $e');
+                      // Show error to user
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Upload failed: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   }
-                }
                 : null,
             child: const Text(
               "Continue",

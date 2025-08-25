@@ -2,80 +2,103 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:my_app/constants.dart';
+import 'package:my_app/core/utils/zip_utils.dart';
+
 
 typedef Progress = void Function(int sent, int total);
 
+const baseUrl = 'https://6ox7wiysef.execute-api.eu-west-1.amazonaws.com/prod';
+
 class VideoUploadService {
-  
-  static String get _baseUrl => kDebugMode 
-    ? 'https://6ox7wiysef.execute-api.eu-west-1.amazonaws.com/prod'
-    : 'https://api.gym-pose.com/api/v1/video/upload';
 
-  static Future<Map<String, String>> getPresignedUrl({required String exerciseType, required String userId}) async {
-    print('Url: $_baseUrl');
-    final uri = Uri.parse('$_baseUrl/generate-presigned-url').replace(queryParameters: {
-      'exercise_type': exerciseType,
+  static Future<Map<String, String>> getPresignedUrlForZip({required String exerciseType, required String userId}) async {
+    final mappedExerciseType = mappingExerciseTypeToSlotId[exerciseType];
+    if (mappedExerciseType == null) {
+      throw Exception('Invalid exercise type: $exerciseType');
+    }
+    
+    // Get presigned url for zip file
+    final uri = Uri.parse('$baseUrl/generate-presigned-url').replace(queryParameters: {
+      'exercise_type': mappedExerciseType,
       'user_id': userId,
-      'filename': 'video.mp4',
+      'filename': 'data.zip',
     });
-
     final response = await http.post(uri);
-
-    print('Response: ${response}');
 
     if (response.statusCode != 200) {
       throw Exception('HTTP request failed: ${response.statusCode} - ${response.body}');
     }
 
     final responseBody = jsonDecode(response.body);
-    print('Response body: $responseBody');
-    
-    final url = responseBody['url'] as String;
-    print('Url: $url');
-    final key = responseBody['key'] as String;
-    print('Key: $key');
 
     return {
-      'url': url,
-      'key': key,
+      'url': responseBody['url'] as String,
+      'key': responseBody['key'] as String,
     };
   }
 
-  static Future<void> uploadVideoWithProgress({
+  static Future<void> uploadZipWithProgress({
     required Uri presignedUrl,
-    required File file,
-    String contentType = 'video/mp4',
+    required Map<String, File> files,
+    required String zipFileName,
+    String contentType = 'application/zip',
     Progress? onProgress,
   }) async {
-      final client = http.Client();
-      try {
-        final length = await file.length();
-        final stream = file.openRead();
-        int sent = 0;
+    File? zipFile;
+    final client = http.Client();
+    
+    try {
+      // Create zip file from the provided files
+      zipFile = await ZipUtils.createZipFromFilesWithNames(
+        filesMap: files,
+        zipFileName: zipFileName,
+      );
 
-        final request = http.StreamedRequest('PUT', presignedUrl)
-          ..headers['Content-Type'] = contentType
-          ..headers['Content-Length'] = length.toString();
+      final length = await zipFile.length();
+      final stream = zipFile.openRead();
 
-        await for (final chunk in stream) {
-          request.sink.add(chunk);
-          sent += chunk.length;
-          onProgress?.call(sent, length);
-        }
-        await request.sink.close();
+      final request = http.StreamedRequest('PUT', presignedUrl)
+        ..contentLength = length;
 
-        final response = await client.send(request);
-        if (response.statusCode != 200 && response.statusCode != 204) {
-          final body = await response.stream.bytesToString();
-          throw Exception('Upload failed: ${response.statusCode} — $body');
-        }
-        else {
-          print('Upload successful');
-        }
-      } finally {
-        client.close();
+      // Ensure headers match what was signed
+      final signedHeadersCsv = presignedUrl.queryParameters['X-Amz-SignedHeaders'];
+      final signedHeaders = signedHeadersCsv?.split(';') ?? const <String>[];
+      if (signedHeaders.contains('content-type')) {
+        request.headers['Content-Type'] = contentType;
       }
+      if (signedHeaders.contains('x-amz-content-sha256')) {
+        request.headers['x-amz-content-sha256'] = 'UNSIGNED-PAYLOAD';
+      }
+
+      // Send the zip file to the presigned url
+      int sent = 0;
+      await for (final chunk in stream) {
+        request.sink.add(chunk);
+        sent += chunk.length;
+        onProgress?.call(sent, length);
+      }
+
+      // Close the request
+      request.sink.close();
+
+      // Send the request
+      final response = await client.send(request);
+      
+      // Check if the upload was successful
+      if (response.statusCode != 200) {
+        final body = await response.stream.bytesToString();
+        throw Exception('Upload failed: ${response.statusCode} — $body');
+      }
+      
+    } finally {
+      client.close();
+      
+      // Clean up the temporary zip file
+      if (zipFile != null) {
+        await ZipUtils.cleanupZipFile(zipFile);
+      }
+    }
   }
 }
