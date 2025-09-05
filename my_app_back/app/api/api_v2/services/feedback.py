@@ -28,6 +28,7 @@ class FeedbackService:
         )
 
         for final_evaluation_feedback in final_evaluation_feedbacks_list:
+            print("final_evaluation_feedback", final_evaluation_feedback)
             for measure, feedback_value in final_evaluation_feedback.items():
                 if feedback_value.rating == ExerciseRatingEnum.WARNING:
                     feedback.warnings.append(
