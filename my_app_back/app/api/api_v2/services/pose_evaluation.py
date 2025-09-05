@@ -6,13 +6,12 @@ import typing as t
 import boto3
 
 from app.api.api_v2.schemas.exercise import (
-    ExerciseFeedback,
+    ExerciseFinalEvaluation,
 )
 from app.api.api_v2.schemas.feedback import Feedback
 from app.api.api_v2.schemas.pose import OutputPose
 from app.enum import ExerciseEnum, Viewpoint
 from app.api.api_v2.services.video import VideoService, VideoServiceFactory
-from app.enum import ExerciseMeasureEnum
 
 HARDCODED_VIEWPOINTS = [
     Viewpoint.SIDE,
@@ -76,6 +75,7 @@ class PoseEvaluationService:
         exercise_type: The exercise type to process.
         """
         output_feedback: t.List[Feedback] = []
+        s3_video_keys: list[str] = []
 
         video_paths = self.unzip_videos_to_temp(file_path)
 
@@ -85,7 +85,7 @@ class PoseEvaluationService:
 
             video_service.process_video(exercise_type)
 
-            final_evaluation: dict[ExerciseMeasureEnum, ExerciseFeedback] = (
+            final_evaluation: ExerciseFinalEvaluation = (
                 video_service.get_final_evaluation()
             )
 
@@ -93,7 +93,8 @@ class PoseEvaluationService:
             print("Final evaluation: ", final_evaluation)
             print("########################")
 
-            output_feedback.append(final_evaluation)
+            output_feedback.extend(final_evaluation.feedback)
+            s3_video_keys.extend(final_evaluation.s3_video_keys)
 
         output_feedback = video_service.feedback_service.summarize_final_evaluation(
             output_feedback, exercise_type
@@ -102,4 +103,5 @@ class PoseEvaluationService:
         print("Returning streaming response")
         return OutputPose(
             feedback=output_feedback,
+            s3_video_keys=s3_video_keys,
         )

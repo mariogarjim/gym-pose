@@ -1,12 +1,13 @@
 import json
-import boto3
 import os
-from typing import Dict, Any
 import uuid
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict
 
+import boto3
 from app.api.api_v2.services.pose_evaluation import PoseEvaluationService
 from app.enum import ExerciseEnum
-from enum import Enum
 
 
 class AnalysisStatus(Enum):
@@ -37,7 +38,6 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     s3_client = boto3.client("s3")
     dynamodb = boto3.resource("dynamodb")
 
-    bucket_name = os.environ["BUCKET"]
     table_name = os.environ["TABLE"]
     table = dynamodb.Table(table_name)
 
@@ -69,15 +69,16 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     # 5. Update DynamoDB with analysis results
 
                     # Placeholder: Update DynamoDB with processing status
-                    response = table.put_item(
-                        Item={
-                            "pk": f"video#{key}",
-                            "sk": f"user#{user_id}",
-                            "status": AnalysisStatus.PROCESSING.value,
-                            "bucket": bucket,
-                            "key": key,
-                            "timestamp": context.aws_request_id,
-                        }
+                    table.update_item(
+                        Key={
+                            "userId": user_id,
+                            "exerciseType-date": f"{exercise_type}-{datetime.now().strftime('%Y-%m-%d')}",
+                        },
+                        UpdateExpression="set #s = :s",
+                        ExpressionAttributeNames={"#s": "status"},
+                        ExpressionAttributeValues={
+                            ":s": AnalysisStatus.PROCESSING.value,
+                        },
                     )
 
                     # Stream from S3 -> /tmp (constant memory)
@@ -92,16 +93,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         user_id=user_id,
                     )
 
-                    # table.update_item(
-                    #    Key={"pk": f"video#{key}", "sk": f"user#{user_id}"},
-                    #    UpdateExpression="set #s = :s, result_key = :r, result_url = :u",
-                    #    ExpressionAttributeNames={"#s": "status"},
-                    #    ExpressionAttributeValues={
-                    #        ":s": AnalysisStatus.DONE.value,
-                    #        ":r": output_pose.key,
-                    #        ":u": output_pose.url,
-                    #    },
-                    # )
+                    feedback = output_pose.feedback
+
+                    table.update_item(
+                        Key={
+                            "pk": f"user#{user_id}",
+                            "sk": f"exercise#{exercise_type}",
+                        },
+                        UpdateExpression="set #s = :s, #f = :f",
+                        ExpressionAttributeNames={"#s": "status", "#f": "feedback"},
+                        ExpressionAttributeValues={
+                            ":s": AnalysisStatus.DONE.value,
+                            ":f": feedback.model_dump_json(),
+                        },
+                    )
 
         return {"statusCode": 200, "body": json.dumps("Successfully processed videos")}
 

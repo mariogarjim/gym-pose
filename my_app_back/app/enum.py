@@ -13,35 +13,35 @@ class ExerciseMeasureEnum(Enum):
     BASIC_LANDMARKS = "basic_landmarks"
 
     # SQUAT
-    SQUAT_KNEE_ANKLE_ALIGNMENT = "squat_knee_ankle_alignment"
-    SQUAT_DEPTH = "squat_depth"
-    SQUAT_BACK_POSTURE = "squat_back_posture"
-    HEAD_ALIGNMENT = "head_alignment"
+    SQUAT_KNEE_ANKLE_ALIGNMENT = "squat.knee_ankle_alignment"
+    SQUAT_DEPTH = "squat.depth"
+    SQUAT_BACK_POSTURE = "squat.back_posture"
+    HEAD_ALIGNMENT = "head.alignment"
 
     # PULL UP
-    PULL_UP_ARMS_NEARLY_EXTENDED = "pull_up_arms_nearly_extended"
-    PULL_UP_CHIN_OVER_BAR = "pull_up_chin_over_bar"
-    PULL_UP_SHOULDER_CORRECT_POSITION = "pull_up_shoulder_correct_position"
+    PULL_UP_ARMS_NEARLY_EXTENDED = "pull_up.arms_nearly_extended"
+    PULL_UP_CHIN_OVER_BAR = "pull_up.chin_over_bar"
+    PULL_UP_SHOULDER_CORRECT_POSITION = "pull_up.shoulder_correct_position"
 
     # SIDE LATERAL RAISE
     SIDE_LATERAL_RAISE_ARMS_LIFTING_TOO_HIGH = (
-        "side_lateral_raise_arms_lifting_too_high"
+        "side_lateral_raise.arms_lifting_too_high"
     )
     SIDE_LATERAL_RAISE_ARMS_ABDUCTION_UP_CORRECT_POSITION = (
-        "side_lateral_raise_arms_abduction_up_correct_position"
+        "side_lateral_raise.arms_abduction_up_correct_position"
     )
-    SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES = "side_lateral_raise_elbows_bend_angles"
+    SIDE_LATERAL_RAISE_ELBOWS_BEND_ANGLES = "side_lateral_raise.elbows_bend_angles"
     SIDE_LATERAL_RAISE_SHOULDERS_INCORRECT_ELEVATION = (
-        "side_lateral_raise_shoulders_incorrect_elevation"
+        "side_lateral_raise.shoulders_incorrect_elevation"
     )
-    SIDE_LATERAL_RAISE_SYMMETRY = "side_lateral_raise_symmetry"
+    SIDE_LATERAL_RAISE_SYMMETRY = "side_lateral_raise.symmetry"
 
     # TRICEPS EXTENSION
-    TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION = "triceps_extension_complete_up_extension"
+    TRICEPS_EXTENSION_COMPLETE_UP_EXTENSION = "triceps_extension.complete_up_extension"
     TRICEPS_EXTENSION_COMPLETE_DOWN_EXTENSION = (
-        "triceps_extension_complete_down_extension"
+        "triceps_extension.complete_down_extension"
     )
-    TRICEPS_EXTENSION_SHOULDER_ANGLE = "triceps_extension_shoulder_angle"
+    TRICEPS_EXTENSION_SHOULDER_ANGLE = "triceps_extension.shoulder_angle"
 
     def __str__(self):
         return self.value

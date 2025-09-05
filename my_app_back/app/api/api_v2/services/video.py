@@ -13,8 +13,7 @@ from app.api.api_v2.schemas.video import VideoMetadata
 from app.api.api_v2.services.exercise import ExerciseFactory
 from app.api.api_v2.services.feedback import FeedbackService
 from app.enum import ExerciseEnum, Viewpoint
-from app.api.api_v2.schemas.exercise import ExerciseFeedback
-from app.enum import ExerciseMeasureEnum
+from app.api.api_v2.schemas.exercise import ExerciseFinalEvaluation
 
 
 class VideoService:
@@ -101,7 +100,7 @@ class VideoService:
 
         print(f"video path: {self.video_path} processed")
 
-    def get_final_evaluation(self) -> dict[ExerciseMeasureEnum, ExerciseFeedback]:
+    def get_final_evaluation(self) -> ExerciseFinalEvaluation:
         self._clean_temp_file()
         return self.exercise_service.get_final_evaluation()
 

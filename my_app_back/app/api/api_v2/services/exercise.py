@@ -1,5 +1,5 @@
 import typing as t
-
+from datetime import datetime
 import mediapipe as mp
 import numpy as np
 from mediapipe.framework.formats import landmark_pb2
@@ -18,6 +18,7 @@ from app.api.api_v1.services.exercise import (
 )
 from app.api.api_v2.schemas.exercise import (
     ExerciseFeedback,
+    ExerciseFinalEvaluation,
     VideoSegment,
 )
 from app.constants import (
@@ -95,7 +96,7 @@ class BaseExerciseService:
         """
         if measure in self.writers:
             return self.writers[measure]
-        out_path = f"/tmp/{uuid.uuid4().hex}_{measure}.mp4"
+        out_path = f"/tmp/{measure.value}.{datetime.now().strftime('%Y-%m-%d')}.mp4"
         self.writers[measure] = FFmpegPipeWriter(
             out_path, w, h, fps=6, crf=22, preset="veryfast"
         )
@@ -252,10 +253,12 @@ class ExerciseSquad(BaseExerciseService):
 
     def get_final_evaluation(
         self,
-    ) -> dict[ExerciseMeasureEnum, ExerciseFeedback]:
+    ) -> ExerciseFinalEvaluation:
         # Upload all the videos to S3
+        s3_video_keys = []
         for _, writer in self.writers.items():
-            writer.close_and_upload()
+            s3_video_key = writer.close_and_upload()
+            s3_video_keys.append(s3_video_key)
 
         # Get the feedback
         feedback: dict[ExerciseMeasureEnum, ExerciseFeedback] = {}
@@ -318,7 +321,10 @@ class ExerciseSquad(BaseExerciseService):
                 video_segments=[VideoSegment(applies_to_full_video=True)],
             )
 
-        return feedback
+        return ExerciseFinalEvaluation(
+            feedback=feedback,
+            s3_video_keys=s3_video_keys,
+        )
 
 
 class ExerciseBenchPress(BaseExerciseService):

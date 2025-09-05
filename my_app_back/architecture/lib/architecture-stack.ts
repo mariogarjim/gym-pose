@@ -10,6 +10,8 @@ import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
+
 
 import { CfnOutput, Duration, RemovalPolicy, Size } from 'aws-cdk-lib';
 import * as path from 'path';
@@ -87,14 +89,26 @@ export class ArchitectureStack extends cdk.Stack {
     // =========================================================================
     // 4) DynamoDB table (PK/SK, TTL)
     // =========================================================================
+    // Check if the table already exists
+    //const analysesTable = dynamodb.Table.fromTableName(this, 'ExistingAnalysesTable', 'AnalysesTable');
+    //if (! analysesTable) {
     const analysesTable = new dynamodb.Table(this, 'AnalysesTable', {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      partitionKey: { name: 'pk', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'sk', type: dynamodb.AttributeType.STRING },
+      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'exerciseType-date', type: dynamodb.AttributeType.STRING },
       timeToLiveAttribute: 'ttl',
       removalPolicy: RemovalPolicy.RETAIN,
       pointInTimeRecovery: true,
     });
+
+    analysesTable.addGlobalSecondaryIndex({
+      indexName: 'byType',
+      partitionKey: { name: 'exerciseType', type: dynamodb.AttributeType.STRING },
+      sortKey:     { name: 'userId', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+    //}
+    
 
     // =========================================================================
     // 5) Lambda Worker (Docker image)
@@ -123,6 +137,22 @@ export class ArchitectureStack extends cdk.Stack {
       },
       loggingFormat: lambda.LoggingFormat.JSON,
       logRetention: logs.RetentionDays.ONE_WEEK,
+    });
+
+    // =========================================================================
+    // ECR Repository with Lifecycle Policy
+    // =========================================================================
+    const ecrRepo = new ecr.Repository(this, 'GymPoseEcrRepo', {
+      repositoryName: `gym-pose-${cdk.Aws.ACCOUNT_ID}`,
+      removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteImages: true,
+      lifecycleRules: [
+        {
+          description: 'Expire UNTAGGED images older than 1 day',
+          tagStatus: ecr.TagStatus.UNTAGGED,
+          maxImageAge: Duration.days(1)
+        }
+      ]
     });
 
     // Subscribe Worker to SQS
@@ -193,5 +223,6 @@ export class ArchitectureStack extends cdk.Stack {
     new CfnOutput(this, 'QueueUrl', { value: ingestQueue.queueUrl });
     new CfnOutput(this, 'ApiUrl', { value: api.url });
     new CfnOutput(this, 'DynamoTable', { value: analysesTable.tableName });
+    new CfnOutput(this, 'EcrRepositoryUri', { value: ecrRepo.repositoryUri });
   }
 }

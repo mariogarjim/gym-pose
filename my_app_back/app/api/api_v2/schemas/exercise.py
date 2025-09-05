@@ -17,3 +17,8 @@ class ExerciseFeedback(BaseModel):
     rating: ExerciseRatingEnum
     comment: str
     video_segments: list[VideoSegment]
+
+
+class ExerciseFinalEvaluation(BaseModel):
+    feedback: dict[ExerciseMeasureEnum, ExerciseFeedback]
+    s3_video_keys: list[str]

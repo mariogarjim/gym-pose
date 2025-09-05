@@ -118,3 +118,5 @@ class FFmpegPipeWriter:
             os.remove(local_path)
         except FileNotFoundError:
             pass
+
+        return key
