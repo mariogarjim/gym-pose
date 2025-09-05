@@ -107,6 +107,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                             ":f": feedback.model_dump_json(),
                         },
                     )
+        else:
+            print("No records to process")
 
         return {"statusCode": 200, "body": json.dumps("Successfully processed videos")}
 

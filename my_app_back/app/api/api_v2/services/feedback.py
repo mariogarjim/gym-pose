@@ -2,11 +2,10 @@ import typing as t
 from app.enum import (
     ExerciseEnum,
     ExerciseMeasureEnum,
-    ExerciseFeedbackEnum,
     ExerciseRatingEnum,
 )
 from app.api.api_v2.schemas.exercise import ExerciseFeedback
-from app.api.api_v2.schemas.feedback import Feedback, ImprovementPoint
+from app.api.api_v2.schemas.feedback import Feedback
 
 
 class FeedbackService:
