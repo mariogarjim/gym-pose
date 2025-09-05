@@ -56,6 +56,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 base, ext = filename, ""
 
             timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d-%H%M%S")
+            new_filename = f"{base}-{timestamp}{ext}"
 
             key = f"raw/{user_id}/{exercise_type}/{new_filename}"
 
