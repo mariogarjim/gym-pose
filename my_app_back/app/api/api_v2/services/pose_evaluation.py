@@ -74,7 +74,7 @@ class PoseEvaluationService:
 
         exercise_type: The exercise type to process.
         """
-        output_feedback: t.List[Feedback] = []
+        feedback_list: t.List[Feedback] = []
         s3_video_keys: list[str] = []
 
         video_paths = self.unzip_videos_to_temp(file_path)
@@ -93,11 +93,14 @@ class PoseEvaluationService:
             print("Final evaluation: ", final_evaluation)
             print("########################")
 
-            output_feedback.extend(final_evaluation.feedback)
+            feedback_list.extend(final_evaluation.feedback)
             s3_video_keys.extend(final_evaluation.s3_video_keys)
 
+        print("feedback_list", feedback_list)
+
         output_feedback = video_service.feedback_service.summarize_final_evaluation(
-            output_feedback, exercise_type
+            feedback_list,
+            exercise_type,
         )
 
         print("Returning streaming response")
